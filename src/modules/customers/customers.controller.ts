@@ -8,7 +8,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ZodValidationPipe } from 'nestjs-zod';
+import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import type { PaginatedResult } from '../../shared/repositories/base.repository';
 import {
   PaginationQuerySchema,
@@ -16,19 +16,23 @@ import {
 } from '../../shared/model/request.model';
 import { Customer } from './customer.entity';
 import { CustomersService } from './customers.service';
-import { CreateCustomerDto } from './dto/create-customer.dto';
-import { UpdateCustomerDto } from './dto/update-customer.dto';
+import {
+  CreateCustomerBodyDTO,
+  GetCustomersResDTO,
+  UpdateCustomerBodyDTO,
+} from './customer.dto';
 
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
-  create(@Body() createCustomerDto: CreateCustomerDto): Promise<Customer> {
+  create(@Body() createCustomerDto: CreateCustomerBodyDTO): Promise<Customer> {
     return this.customersService.create(createCustomerDto);
   }
 
   @Get()
+  @ZodSerializerDto(GetCustomersResDTO)
   findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryType,
@@ -44,7 +48,7 @@ export class CustomersController {
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() updateCustomerDto: UpdateCustomerDto,
+    @Body() updateCustomerDto: UpdateCustomerBodyDTO,
   ): Promise<Customer | null> {
     return this.customersService.update(id, updateCustomerDto);
   }

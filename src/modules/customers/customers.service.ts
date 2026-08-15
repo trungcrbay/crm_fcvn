@@ -3,21 +3,18 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import {
-  PaginatedResult,
-  PaginationOptions,
-} from '../../shared/repositories/base.repository';
+import { PaginatedResult } from '../../shared/repositories/base.repository';
 import { PaginationQueryType } from '../../shared/model/request.model';
 import { CustomersRepository } from './customers.repository';
 import { Customer } from './customer.entity';
-import { CreateCustomerDto } from './dto/create-customer.dto';
-import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { CreateCustomerBodyDTO, UpdateCustomerBodyDTO } from './customer.dto';
+import { QueryOptions } from 'src/shared/model/query.model';
 
 @Injectable()
 export class CustomersService {
   constructor(private readonly customersRepository: CustomersRepository) {}
 
-  async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
+  async create(createCustomerDto: CreateCustomerBodyDTO): Promise<Customer> {
     const customerCode = createCustomerDto.customerCode?.trim();
     const name = createCustomerDto.name?.trim();
     const email = createCustomerDto.email?.trim().toLowerCase();
@@ -84,7 +81,7 @@ export class CustomersService {
   async findAll(
     query: PaginationQueryType = { page: 1, limit: 10 },
   ): Promise<Customer[] | PaginatedResult<Customer>> {
-    const options: PaginationOptions = {
+    const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
       search: query.search,
@@ -100,7 +97,7 @@ export class CustomersService {
 
   async update(
     id: string,
-    updateCustomerDto: UpdateCustomerDto,
+    updateCustomerDto: UpdateCustomerBodyDTO,
   ): Promise<Customer | null> {
     return this.customersRepository.update(id, updateCustomerDto);
   }
