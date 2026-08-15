@@ -1,4 +1,5 @@
 import { DeepPartial, Like, Repository } from 'typeorm';
+import { QueryOptions } from '../model/query.model';
 
 export type EntityId = string | number;
 
@@ -7,14 +8,6 @@ export interface PaginationMeta {
   limit: number;
   total: number;
   totalPages: number;
-}
-
-export interface PaginationOptions {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortOrder?: 'ASC' | 'DESC';
-  where?: Record<string, any>;
 }
 
 export interface PaginatedResult<T> {
@@ -30,9 +23,7 @@ export class BaseRepository<T extends { id?: EntityId }> {
     return this.repository.save(entity);
   }
 
-  async findAll(
-    options: PaginationOptions = {},
-  ): Promise<T[] | PaginatedResult<T>> {
+  async findAll(options: QueryOptions = {}): Promise<T[] | PaginatedResult<T>> {
     const page = Number(options.page ?? 1);
     const limit = Number(options.limit ?? 10);
     const safePage = page > 0 ? page : 1;
@@ -90,7 +81,7 @@ export class BaseRepository<T extends { id?: EntityId }> {
   }
 
   private buildSearchWhere(
-    options: PaginationOptions,
+    options: QueryOptions,
   ): Record<string, any> | undefined {
     const where = options.where ?? {};
 

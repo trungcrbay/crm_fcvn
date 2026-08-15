@@ -3,16 +3,13 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import {
-  PaginatedResult,
-  PaginationOptions,
-} from '../../shared/repositories/base.repository';
+import { PaginatedResult } from '../../shared/repositories/base.repository';
 import { PaginationQueryType } from '../../shared/model/request.model';
 import { UserStatus } from '../../shared/constant/user.constant';
 import { UsersRepository } from './users.repository';
 import { User } from './user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryOptions } from 'src/shared/model/query.model';
 
 @Injectable()
 export class UsersService {
@@ -112,7 +109,7 @@ export class UsersService {
   async findAll(
     query: PaginationQueryType = { page: 1, limit: 10 },
   ): Promise<User[] | PaginatedResult<User>> {
-    const options: PaginationOptions = {
+    const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
       search: query.search,
