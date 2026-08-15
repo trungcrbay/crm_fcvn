@@ -13,6 +13,7 @@ import CustomZodValidationPipe from './shared/pipe/custom-zod-validation.pipe';
 import { TransformInterceptor } from './shared/interceptor/transform.interceptor';
 import { ZodSerializerInterceptor } from 'nestjs-zod';
 import { SharedModule } from './shared/shared.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SharedModule } from './shared/shared.module';
     RolesModule,
     CustomersModule,
     SharedModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
