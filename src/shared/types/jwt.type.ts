@@ -1,6 +1,5 @@
 export interface AcessTokenPayloadCreate {
   userId: number;
-  deviceId: number;
   roleId: number;
   roleName: string;
 }
