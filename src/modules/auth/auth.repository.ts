@@ -12,6 +12,17 @@ export class AuthRepository {
     private readonly repository: Repository<User>,
   ) {}
 
+  async findUniqueUserIncludeRole({
+    email,
+  }: {
+    email: string;
+  }): Promise<User | null> {
+    return this.repository.findOne({
+      where: { email: email.trim().toLowerCase() },
+      relations: { role: true },
+    });
+  }
+
   async createUser(
     user: Pick<UserType, 'roleId' | 'email' | 'password' | 'phone' | 'name'>,
   ): Promise<Omit<User, 'password'>> {

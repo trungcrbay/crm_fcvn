@@ -18,12 +18,6 @@ export enum Permission {
   CUSTOMER_DELETE = 'customer.delete',
   CUSTOMER_MANAGE = 'customer.manage',
 
-  // Airline Module
-  AIRLINE_READ = 'airline.read',
-  AIRLINE_CREATE = 'airline.create',
-  AIRLINE_UPDATE = 'airline.update',
-  AIRLINE_MANAGE = 'airline.manage',
-
   // Department Module
   DEPARTMENT_READ = 'department.read',
   DEPARTMENT_READ_FACILITY = 'department.readFacility',
@@ -62,12 +56,6 @@ export const MANAGE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.CUSTOMER_CREATE,
     Permission.CUSTOMER_UPDATE,
     Permission.CUSTOMER_DELETE,
-  ],
-
-  [Permission.AIRLINE_MANAGE]: [
-    Permission.AIRLINE_READ,
-    Permission.AIRLINE_CREATE,
-    Permission.AIRLINE_UPDATE,
   ],
 
   [Permission.DEPARTMENT_MANAGE]: [

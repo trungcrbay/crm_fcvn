@@ -7,6 +7,7 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import type { PaginatedResult } from '../../shared/repositories/base.repository';
@@ -21,12 +22,17 @@ import {
   GetCustomersResDTO,
   UpdateCustomerBodyDTO,
 } from './customer.dto';
+import { PermissionGuard } from 'src/shared/guard/permission.guard';
+import { Permissions } from 'src/shared/decorator/permissions.decorator';
+import { Permission } from 'src/shared/constant/permission.constant';
 
 @Controller('customers')
+@UseGuards(PermissionGuard)
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
+  @Permissions(Permission.CUSTOMER_CREATE)
   create(@Body() createCustomerDto: CreateCustomerBodyDTO): Promise<Customer> {
     return this.customersService.create(createCustomerDto);
   }

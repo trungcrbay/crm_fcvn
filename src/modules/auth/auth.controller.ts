@@ -1,17 +1,31 @@
 import {
+  Body,
   Controller,
   Get,
   Post,
-  Body,
-  Patch,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  Ip,
   Param,
   Delete,
 } from '@nestjs/common';
+import { ZodSerializerDto } from 'nestjs-zod';
 import { AuthService } from './auth.service';
+import { LoginBodyDTO, LoginResDTO } from './auth.dto';
+import { LoginResType } from './auth.model';
+import { Public } from 'src/shared/decorator/public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('login')
+  @ZodSerializerDto(LoginResDTO)
+  login(@Body() body: LoginBodyDTO): Promise<LoginResType> {
+    return this.authService.login({ ...body });
+  }
 
   @Get()
   findAll() {

@@ -3,7 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './modules/database/database.module';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { LoggingInterceptor } from './shared/interceptor/logging.interceptor';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -14,6 +14,7 @@ import { TransformInterceptor } from './shared/interceptor/transform.interceptor
 import { ZodSerializerInterceptor } from 'nestjs-zod';
 import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuthGuard } from './shared/guard/auth.guard';
 
 @Module({
   imports: [
@@ -30,6 +31,10 @@ import { AuthModule } from './modules/auth/auth.module';
     {
       provide: APP_PIPE,
       useClass: CustomZodValidationPipe,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
     },
     AppService,
     {

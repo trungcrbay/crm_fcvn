@@ -14,6 +14,7 @@ export class TokenService {
   constructor(private readonly jwtService: JwtService) {}
 
   signAccessToken(payload: AcessTokenPayloadCreate) {
+    console.log('gọi signAccessToken');
     return this.jwtService.sign(
       { ...payload, uuid: uuidv4() },
       {
