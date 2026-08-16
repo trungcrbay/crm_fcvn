@@ -1,4 +1,10 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { UserStatus } from '../../shared/constant/user.constant';
 import { BaseEntity } from '../../shared/entities/base.entity';
 import { Role } from '../roles/role.entity';
@@ -6,7 +12,7 @@ import { Role } from '../roles/role.entity';
 @Entity('users')
 export class User extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
-  id: string;
+  id: number;
 
   @Column({ type: 'varchar', length: 50, unique: true })
   userCode: string;
@@ -40,5 +46,4 @@ export class User extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   address: string;
-
 }
