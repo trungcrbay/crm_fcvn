@@ -26,6 +26,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
+import { MessageResDTO } from 'src/shared/dto/response.dto';
+import { ZodSerializerDto } from 'nestjs-zod';
 
 @Controller('roles')
 @ApiTags('Roles')
@@ -47,8 +50,11 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  create(@Body() createRoleDto: CreateRoleBodyDTO): Promise<Role> {
-    return this.rolesService.create(createRoleDto);
+  create(
+    @Body() createRoleDto: CreateRoleBodyDTO,
+    @ActiveUser('userId') userId: number,
+  ): Promise<Role> {
+    return this.rolesService.create(createRoleDto, userId);
   }
 
   @Get()
@@ -116,11 +122,13 @@ export class RolesController {
   update(
     @Param('id') id: string,
     @Body() updateRoleDto: UpdateRoleBodyDTO,
+    @ActiveUser('userId') userId: number,
   ): Promise<Role | null> {
-    return this.rolesService.update(id, updateRoleDto);
+    return this.rolesService.update(id, updateRoleDto, userId);
   }
 
   @Delete(':id')
+  @ZodSerializerDto(MessageResDTO)
   @Permissions([Permission.PERMISSION_MANAGE, Permission.PERMISSION_DELETE])
   @ApiOperation({ summary: 'Xóa vai trò' })
   @ApiParam({
@@ -138,7 +146,7 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  remove(@Param('id') id: string): Promise<void> {
-    return this.rolesService.remove(id);
+  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+    return this.rolesService.remove(id, userId);
   }
 }

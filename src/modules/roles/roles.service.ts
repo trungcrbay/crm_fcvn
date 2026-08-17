@@ -8,12 +8,13 @@ import { CreateRoleBodyDTO, UpdateRoleBodyDTO } from './role.dto';
 export class RolesService {
   constructor(private readonly rolesRepository: RolesRepository) {}
 
-  async create(data: CreateRoleBodyDTO): Promise<Role> {
+  async create(data: CreateRoleBodyDTO, userId: number): Promise<Role> {
     try {
       return await this.rolesRepository.create({
         name: data.name,
         permissions: data.permissions,
         description: data.description,
+        createdById: userId,
       });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -32,9 +33,16 @@ export class RolesService {
     return this.rolesRepository.findOne(id);
   }
 
-  async update(id: string, data: UpdateRoleBodyDTO): Promise<Role | null> {
+  async update(
+    id: string,
+    data: UpdateRoleBodyDTO,
+    userId: number,
+  ): Promise<Role | null> {
     try {
-      return await this.rolesRepository.update(id, data);
+      return await this.rolesRepository.update(id, {
+        ...data,
+        updatedById: userId,
+      });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('Role đã tồn tại');
@@ -44,7 +52,10 @@ export class RolesService {
     }
   }
 
-  async remove(id: string): Promise<void> {
-    await this.rolesRepository.remove(id);
+  async remove(id: string, userId: number) {
+    await this.rolesRepository.remove(id, userId);
+    return {
+      message: 'Xóa vai trò thành công',
+    };
   }
 }

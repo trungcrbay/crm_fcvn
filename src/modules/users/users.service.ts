@@ -15,7 +15,10 @@ export class UsersService {
     private hashingService: HashingService,
   ) {}
 
-  async create(createUserDto: CreateUserBodyDTO): Promise<User> {
+  async create(
+    createUserDto: CreateUserBodyDTO,
+    userId: number,
+  ): Promise<User> {
     try {
       const hashedPassword = await this.hashingService.hash(
         createUserDto.password,
@@ -29,6 +32,7 @@ export class UsersService {
         email: createUserDto.email,
         phone: createUserDto.phone,
         address: createUserDto.address,
+        createdById: userId,
       };
 
       if (createUserDto.roleId !== undefined) {
@@ -65,6 +69,7 @@ export class UsersService {
   async update(
     id: string,
     updateUserDto: UpdateUserBodyDTO,
+    userId: number,
   ): Promise<User | null> {
     const payload: Partial<User> = {
       name: updateUserDto.name,
@@ -73,6 +78,7 @@ export class UsersService {
       phone: updateUserDto.phone,
       address: updateUserDto.address,
       status: updateUserDto.status,
+      updatedById: userId,
     };
 
     if (updateUserDto.roleId !== undefined) {
@@ -82,7 +88,10 @@ export class UsersService {
     return this.usersRepository.update(id, payload);
   }
 
-  async remove(id: string): Promise<void> {
-    return this.usersRepository.remove(id);
+  async remove(id: string, userId: number) {
+    await this.usersRepository.remove(id, userId);
+    return {
+      message: 'Xóa người dùng thành công',
+    };
   }
 }
