@@ -35,7 +35,7 @@ export class AuthService {
     ]);
     const decodedRefreshToken =
       await this.tokenService.verifyRefreshToken(refreshToken);
-    const create_refreshtoken = await this.authRepository.createRefreshToken({
+    await this.authRepository.createRefreshToken({
       token: refreshToken,
       userId: userId,
       expiresAt: new Date(decodedRefreshToken.exp * 1000),
@@ -46,7 +46,6 @@ export class AuthService {
     const user = await this.authRepository.findUniqueUserIncludeRole({
       email: body.email,
     });
-
 
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
