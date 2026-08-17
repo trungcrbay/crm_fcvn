@@ -9,7 +9,6 @@ export const GetUserProfileResSchema = UserSchema.omit({
     id: true,
     name: true,
   }).extend({
-    // Trả về danh sách module name (dedupe) thay vì full object permission → tối ưu payload
     permissions: z.array(z.string()),
   }),
 });

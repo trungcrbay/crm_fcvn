@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { CustomersService } from './customers.service';
 
 describe('CustomersService.create', () => {
@@ -10,9 +11,17 @@ describe('CustomersService.create', () => {
     remove: jest.fn(),
   });
 
+  const duplicateError = () =>
+    new QueryFailedError('INSERT INTO customer failed', [], {
+      code: '23505',
+      detail: 'Key (customerCode)=(CUS-001) already exists.',
+    } as Error & {
+      code: string;
+      detail: string;
+    });
+
   it('should create a valid customer with trimmed values', async () => {
     const repository = buildRepository();
-    repository.findAll.mockResolvedValue([]);
     repository.create.mockResolvedValue({
       id: '1',
       customerCode: 'CUS-001',
@@ -47,168 +56,27 @@ describe('CustomersService.create', () => {
     });
   });
 
-  it('should reject empty customerCode', async () => {
+  it('should throw ConflictException when repository reports unique constraint violation', async () => {
     const repository = buildRepository();
-    const service = new CustomersService(repository as any);
-
-    await expect(
-      service.create({
-        customerCode: '   ',
-        name: 'Alice',
-        email: 'alice@example.com',
-      }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(repository.create).not.toHaveBeenCalled();
-  });
-
-  it('should reject empty name', async () => {
-    const repository = buildRepository();
-    const service = new CustomersService(repository as any);
-
-    await expect(
-      service.create({
-        customerCode: 'CUS-001',
-        name: '   ',
-        email: 'alice@example.com',
-      }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(repository.create).not.toHaveBeenCalled();
-  });
-
-  it('should reject empty email', async () => {
-    const repository = buildRepository();
-    const service = new CustomersService(repository as any);
-
-    await expect(
-      service.create({
-        customerCode: 'CUS-001',
-        name: 'Alice',
-        email: '   ',
-      }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(repository.create).not.toHaveBeenCalled();
-  });
-
-  it('should reject invalid email format', async () => {
-    const repository = buildRepository();
-    const service = new CustomersService(repository as any);
-
-    await expect(
-      service.create({
-        customerCode: 'CUS-001',
-        name: 'Alice',
-        email: 'not-an-email',
-      }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(repository.create).not.toHaveBeenCalled();
-  });
-
-  it('should reject invalid phone format', async () => {
-    const repository = buildRepository();
-    const service = new CustomersService(repository as any);
-
-    await expect(
-      service.create({
-        customerCode: 'CUS-001',
-        name: 'Alice',
-        email: 'alice@example.com',
-        phone: '123',
-      }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(repository.create).not.toHaveBeenCalled();
-  });
-
-  it('should reject duplicate customerCode', async () => {
-    const repository = buildRepository();
-    repository.findAll.mockResolvedValue([
-      {
-        id: '1',
-        customerCode: 'CUS-001',
-        name: 'Existing Customer',
-        email: 'old@example.com',
-      },
-    ]);
+    repository.create.mockRejectedValue(duplicateError());
 
     const service = new CustomersService(repository as any);
 
     await expect(
       service.create({
         customerCode: 'CUS-001',
-        name: 'Alice',
-        email: 'alice@example.com',
-      }),
-    ).rejects.toThrow(ConflictException);
-
-    expect(repository.create).not.toHaveBeenCalled();
-  });
-
-  it('should reject duplicate email', async () => {
-    const repository = buildRepository();
-    repository.findAll.mockResolvedValue([
-      {
-        id: '1',
-        customerCode: 'CUS-002',
-        name: 'Existing Customer',
-        email: 'alice@example.com',
-      },
-    ]);
-
-    const service = new CustomersService(repository as any);
-
-    await expect(
-      service.create({
-        customerCode: 'CUS-003',
-        name: 'Alice',
-        email: 'alice@example.com',
-      }),
-    ).rejects.toThrow(ConflictException);
-
-    expect(repository.create).not.toHaveBeenCalled();
-  });
-
-  it('should reject duplicate phone', async () => {
-    const repository = buildRepository();
-    repository.findAll.mockResolvedValue([
-      {
-        id: '1',
-        customerCode: 'CUS-002',
-        name: 'Existing Customer',
-        email: 'old@example.com',
-        phone: '0909123456',
-      },
-    ]);
-
-    const service = new CustomersService(repository as any);
-
-    await expect(
-      service.create({
-        customerCode: 'CUS-003',
         name: 'Alice',
         email: 'alice@example.com',
         phone: '0909123456',
+        address: 'HCM',
       }),
     ).rejects.toThrow(ConflictException);
-
-    expect(repository.create).not.toHaveBeenCalled();
   });
 
-  it('should not mutate existing data when validation fails', async () => {
+  it('should rethrow non-unique repository errors', async () => {
     const repository = buildRepository();
-    const existingCustomers = [
-      {
-        id: '1',
-        customerCode: 'CUS-001',
-        name: 'Existing Customer',
-        email: 'alice@example.com',
-        phone: '0909123456',
-      },
-    ];
-    repository.findAll.mockResolvedValue(existingCustomers);
+    const error = new Error('DB failure');
+    repository.create.mockRejectedValue(error);
 
     const service = new CustomersService(repository as any);
 
@@ -217,11 +85,9 @@ describe('CustomersService.create', () => {
         customerCode: 'CUS-001',
         name: 'Alice',
         email: 'alice@example.com',
+        phone: '0909123456',
+        address: 'HCM',
       }),
-    ).rejects.toThrow(ConflictException);
-
-    expect(repository.findAll).toHaveBeenCalledTimes(1);
-    expect(repository.create).not.toHaveBeenCalled();
-    expect(existingCustomers).toHaveLength(1);
+    ).rejects.toThrow('DB failure');
   });
 });

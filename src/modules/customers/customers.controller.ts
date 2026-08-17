@@ -25,20 +25,63 @@ import {
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
 import { Permission } from 'src/shared/constant/permission.constant';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 
 @Controller('customers')
+@ApiTags('Customers')
+@ApiBearerAuth()
 @UseGuards(PermissionGuard)
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
-  @Permissions(Permission.CUSTOMER_CREATE)
+  @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_CREATE])
+  @ApiOperation({ summary: 'Tạo khách hàng mới' })
+  @ApiBody({ type: CreateCustomerBodyDTO })
+  @ApiCreatedResponse({
+    description: 'Tạo mới khách hàng thành công.',
+    type: Customer,
+  })
+  @ApiConflictResponse({
+    description: 'Thông tin khách hàng đã tồn tại.',
+    type: CreateCustomerBodyDTO,
+  })
+  @ApiForbiddenResponse({
+    description: 'Bạn không có quyền thực hiện hành động này.',
+    type: CreateCustomerBodyDTO,
+  })
   create(@Body() createCustomerDto: CreateCustomerBodyDTO): Promise<Customer> {
     return this.customersService.create(createCustomerDto);
   }
 
   @Get()
+  @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_READ])
   @ZodSerializerDto(GetCustomersResDTO)
+  @ApiOperation({ summary: 'Lấy danh sách khách hàng' })
+  @ApiQuery(PaginationQueryDTO)
+  @ApiResponse({
+    status: 200,
+    description: 'Lấy danh sách khách hàng thành công.',
+    type: Customer,
+    isArray: true,
+  })
+  @ApiForbiddenResponse({
+    description: 'Bạn không có quyền thực hiện hành động này.',
+  })
   findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryType,
@@ -47,11 +90,38 @@ export class CustomersController {
   }
 
   @Get(':id')
+  @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_READ])
+  @ApiOperation({ summary: 'Lấy thông tin khách hàng' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của khách hàng',
+    example: '12',
+  })
+  @ApiNotFoundResponse({
+    description: 'Không tìm thấy khách hàng.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Bạn không có quyền thực hiện hành động này.',
+  })
   findOne(@Param('id') id: string): Promise<Customer | null> {
     return this.customersService.findOne(id);
   }
 
   @Put(':id')
+  @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_UPDATE])
+  @ApiOperation({ summary: 'Cập nhật thông tin khách hàng' })
+  @ApiBody({ type: UpdateCustomerBodyDTO })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của khách hàng',
+    example: '12',
+  })
+  @ApiBadRequestResponse({
+    description: 'Yêu cầu không hợp lệ.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Không tìm thấy khách hàng.',
+  })
   update(
     @Param('id') id: string,
     @Body() updateCustomerDto: UpdateCustomerBodyDTO,
@@ -60,6 +130,16 @@ export class CustomersController {
   }
 
   @Delete(':id')
+  @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_DELETE])
+  @ApiOperation({ summary: 'Xóa khách hàng' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của khách hàng',
+    example: '12',
+  })
+  @ApiNotFoundResponse({
+    description: 'Không tìm thấy khách hàng.',
+  })
   remove(@Param('id') id: string): Promise<void> {
     return this.customersService.remove(id);
   }

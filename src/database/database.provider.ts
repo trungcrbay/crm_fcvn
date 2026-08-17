@@ -13,5 +13,5 @@ export const getDatabaseConfig = (
   logging: true,
   autoLoadEntities: true,
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: true,
+  synchronize: false,
 });
