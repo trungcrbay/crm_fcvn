@@ -86,7 +86,6 @@ export function normalizePermissionList<T extends string>(
   permissions: T[] = [],
 ): T[] {
   return [
-    ,
     ...new Set(
       permissions
         .map((permission) => normalizePermissionCode(String(permission)))

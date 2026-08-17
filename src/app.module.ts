@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -15,12 +15,15 @@ import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthGuard } from './shared/guard/auth.guard';
 import { DatabaseModule } from './database/database.module';
-import { RefreshTokenModule } from './refresh-token/refresh-token.module';
-import { ProfileModule } from './profile/profile.module';
+import { RefreshTokenModule } from './modules/refresh-token/refresh-token.module';
+import { ProfileModule } from './modules/profile/profile.module';
+import { LoggerModule } from 'nestjs-pino';
+import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule.forRoot(),
     DatabaseModule,
     UsersModule,
     RolesModule,
@@ -56,4 +59,8 @@ import { ProfileModule } from './profile/profile.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

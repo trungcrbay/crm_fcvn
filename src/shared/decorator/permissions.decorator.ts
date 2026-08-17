@@ -7,5 +7,5 @@ import { Permission } from '../constant/permission.constant';
  * Người dùng chỉ cần có MỘT trong các quyền liệt kê là được phép truy cập (OR).
  * Ví dụ: @Permissions(Permission.CUSTOMER_CREATE)
  */
-export const Permissions = (...permissions: Permission[]) =>
+export const Permissions = (permissions: Permission | Permission[]) =>
   SetMetadata(PERMISSIONS_KEY, permissions);

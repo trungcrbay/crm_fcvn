@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PaginatedResult } from '../../shared/repositories/base.repository';
 import { PaginationQueryType } from '../../shared/model/request.model';
 import { UsersRepository } from './users.repository';

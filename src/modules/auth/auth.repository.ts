@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { generateUserCode } from 'src/shared/utils';
-import { RefreshToken } from 'src/refresh-token/refresh-token.entity';
+import { RefreshToken } from 'src/modules/refresh-token/refresh-token.entity';
 
 @Injectable()
 export class AuthRepository {
