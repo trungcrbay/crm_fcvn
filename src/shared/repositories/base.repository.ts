@@ -76,8 +76,16 @@ export class BaseRepository<T extends { id?: EntityId }> {
     return this.findOne(id);
   }
 
-  async remove(id: EntityId): Promise<void> {
-    await this.repository.delete(id);
+  async remove(id: EntityId, deletedById?: EntityId): Promise<void> {
+    if (deletedById !== undefined) {
+      await this.repository.update(id, {
+        deletedAt: new Date(),
+        deletedById,
+      } as any);
+      return;
+    }
+
+    await this.repository.softDelete(id);
   }
 
   private buildSearchWhere(

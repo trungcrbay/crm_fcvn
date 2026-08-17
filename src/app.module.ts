@@ -19,6 +19,8 @@ import { RefreshTokenModule } from './modules/refresh-token/refresh-token.module
 import { ProfileModule } from './modules/profile/profile.module';
 import { LoggerModule } from 'nestjs-pino';
 import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware';
+import { SupplierModule } from './modules/supplier/supplier.module';
+import { SupplierGroupModule } from './modules/supplier-group/supplier-group.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware
     AuthModule,
     RefreshTokenModule,
     ProfileModule,
+    SupplierModule,
+    SupplierGroupModule,
   ],
   controllers: [AppController],
   providers: [
