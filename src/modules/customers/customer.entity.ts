@@ -6,7 +6,7 @@ export class Customer extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
   id: string;
 
-  // @Index({ unique: true })
+  @Index({ unique: true })
   @Column({ type: 'varchar', length: 50, unique: true })
   customerCode: string;
 
