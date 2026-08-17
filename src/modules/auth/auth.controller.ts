@@ -1,20 +1,15 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Headers,
-  HttpCode,
-  HttpStatus,
-  Ip,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { ZodSerializerDto } from 'nestjs-zod';
 import { AuthService } from './auth.service';
-import { LoginBodyDTO, LoginResDTO } from './auth.dto';
+import {
+  LoginBodyDTO,
+  LoginResDTO,
+  LogoutBodyDTO,
+  RefreshTokenBodyDTO,
+} from './auth.dto';
 import { LoginResType } from './auth.model';
 import { Public } from 'src/shared/decorator/public.decorator';
+import { MessageResDTO } from 'src/shared/dto/response.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,18 +22,15 @@ export class AuthController {
     return this.authService.login({ ...body });
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
+  @Post('refresh-token')
+  @ZodSerializerDto(LoginResDTO)
+  refreshToken(@Body() body: RefreshTokenBodyDTO): Promise<LoginResType> {
+    return this.authService.refreshToken({ ...body });
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  @Post('logout')
+  @ZodSerializerDto(MessageResDTO)
+  logout(@Body() body: LogoutBodyDTO) {
+    return this.authService.logout(body.refreshToken);
   }
 }

@@ -5,105 +5,48 @@ import {
 } from '@nestjs/common';
 import { PaginatedResult } from '../../shared/repositories/base.repository';
 import { PaginationQueryType } from '../../shared/model/request.model';
-import { UserStatus } from '../../shared/constant/user.constant';
 import { UsersRepository } from './users.repository';
 import { User } from './user.entity';
-import { CreateUserDto } from './dto/create-user.dto';
 import { QueryOptions } from 'src/shared/model/query.model';
+import { CreateUserBodyDTO, UpdateUserBodyDTO } from './user.dto';
+import { isUniqueConstraintError } from 'src/shared/helpers';
+import { HashingService } from 'src/shared/services/hashing.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private hashingService: HashingService,
+  ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    const name = createUserDto.name?.trim();
-    const userCode = createUserDto.userCode?.trim();
-    const password = createUserDto.password?.trim();
-    const roleId =
-      createUserDto.roleId ??
-      (typeof createUserDto.role === 'number' ? createUserDto.role : undefined);
-    const status = createUserDto.status ?? UserStatus.ACTIVE;
-    const email = createUserDto.email?.trim().toLowerCase();
-    const phone = createUserDto.phone?.trim();
-    const address = createUserDto.address?.trim();
+  async create(createUserDto: CreateUserBodyDTO): Promise<User> {
+    try {
+      const hashedPassword = await this.hashingService.hash(
+        createUserDto.password,
+      );
 
-    if (!name) {
-      throw new BadRequestException('Tên người dùng không được để trống');
+      const payload: Partial<User> = {
+        name: createUserDto.name,
+        userCode: createUserDto.userCode,
+        password: hashedPassword,
+        status: createUserDto.status,
+        email: createUserDto.email,
+        phone: createUserDto.phone,
+        address: createUserDto.address,
+      };
+
+      if (createUserDto.roleId !== undefined) {
+        payload.roleId = createUserDto.roleId;
+      }
+
+      return await this.usersRepository.create(payload);
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Mã, email hoặc số điện thoại đã tồn tại');
+      }
+
+      throw error;
     }
-
-    if (!userCode) {
-      throw new BadRequestException('Mã người dùng không được để trống');
-    }
-
-    if (!password) {
-      throw new BadRequestException('Mật khẩu không được để trống');
-    }
-
-    if (password.length < 6) {
-      throw new BadRequestException('Mật khẩu phải có ít nhất 6 ký tự');
-    }
-
-    if (roleId !== undefined && Number.isNaN(Number(roleId))) {
-      throw new BadRequestException('Role không hợp lệ');
-    }
-
-    if (!Object.values(UserStatus).includes(status)) {
-      throw new BadRequestException('Trạng thái không hợp lệ');
-    }
-
-    if (!email) {
-      throw new BadRequestException('Email không được để trống');
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new BadRequestException('Email không hợp lệ');
-    }
-
-    if (phone && !/^(\+84|84|0)[0-9]{9,10}$/.test(phone.replace(/\s+/g, ''))) {
-      throw new BadRequestException('Số điện thoại không hợp lệ');
-    }
-
-    const usersResult = await this.usersRepository.findAll();
-    const users = Array.isArray(usersResult) ? usersResult : usersResult.data;
-
-    const existedUserCode = users.some(
-      (item) => item.userCode?.trim().toLowerCase() === userCode.toLowerCase(),
-    );
-    const existedEmail = users.some(
-      (item) => item.email?.toLowerCase() === email,
-    );
-    const existedPhone = phone
-      ? users.some((item) => item.phone === phone)
-      : false;
-
-    if (existedUserCode) {
-      throw new ConflictException('Mã người dùng đã tồn tại');
-    }
-
-    if (existedEmail) {
-      throw new ConflictException('Email đã tồn tại');
-    }
-
-    if (existedPhone) {
-      throw new ConflictException('Số điện thoại đã tồn tại');
-    }
-
-    const payload: Partial<User> = {
-      name,
-      userCode,
-      password,
-      status,
-      email,
-      phone,
-      address,
-    };
-
-    if (roleId !== undefined) {
-      payload.roleId = Number(roleId);
-      payload.role = { id: Number(roleId) } as any;
-    }
-
-    return this.usersRepository.create(payload);
   }
 
   async findAll(
@@ -123,21 +66,25 @@ export class UsersService {
     return this.usersRepository.findOne(id);
   }
 
-  // async update(id: string, updateUserDto: UpdateUserDto): Promise<User | null> {
-  //   const { role, ...userPayload } = updateUserDto as UpdateUserDto & {
-  //     role?: unknown;
-  //   };
+  async update(
+    id: string,
+    updateUserDto: UpdateUserBodyDTO,
+  ): Promise<User | null> {
+    const payload: Partial<User> = {
+      name: updateUserDto.name,
+      userCode: updateUserDto.userCode,
+      email: updateUserDto.email,
+      phone: updateUserDto.phone,
+      address: updateUserDto.address,
+      status: updateUserDto.status,
+    };
 
-  //   const normalizedPayload: Partial<User> = {
-  //     ...userPayload,
-  //   } as Partial<User>;
+    if (updateUserDto.roleId !== undefined) {
+      payload.roleId = updateUserDto.roleId;
+    }
 
-  //   if (updateUserDto.roleId !== undefined) {
-  //     normalizedPayload.roleId = Number(updateUserDto.roleId);
-  //   }
-
-  //   return this.usersRepository.update(id, normalizedPayload);
-  // }
+    return this.usersRepository.update(id, payload);
+  }
 
   async remove(id: string): Promise<void> {
     return this.usersRepository.remove(id);

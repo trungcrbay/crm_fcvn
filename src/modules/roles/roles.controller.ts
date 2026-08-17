@@ -6,18 +6,21 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
+
 import { Role } from './role.entity';
 import { RolesService } from './roles.service';
+import { CreateRoleBodyDTO, UpdateRoleBodyDTO } from './role.dto';
+import { PermissionGuard } from 'src/shared/guard/permission.guard';
 
 @Controller('roles')
+@UseGuards(PermissionGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Post()
-  create(@Body() createRoleDto: CreateRoleDto): Promise<Role> {
+  create(@Body() createRoleDto: CreateRoleBodyDTO): Promise<Role> {
     return this.rolesService.create(createRoleDto);
   }
 
@@ -34,7 +37,7 @@ export class RolesController {
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() updateRoleDto: UpdateRoleDto,
+    @Body() updateRoleDto: UpdateRoleBodyDTO,
   ): Promise<Role | null> {
     return this.rolesService.update(id, updateRoleDto);
   }

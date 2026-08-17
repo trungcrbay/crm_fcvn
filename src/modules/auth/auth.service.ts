@@ -1,11 +1,20 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 
-import { LoginBodyType, LoginResType } from './auth.model';
+import {
+  LoginBodyType,
+  LoginResType,
+  RefreshTokenBodyType,
+} from './auth.model';
 import { HashingService } from 'src/shared/services/hashing.service';
 import { AuthRepository } from './auth.repository';
 import { AcessTokenPayloadCreate } from 'src/shared/types/jwt.type';
 import { TokenService } from 'src/shared/services/token.service';
 import { UserStatus } from 'src/shared/constant/user.constant';
+import { isUniqueConstraintError } from 'src/shared/helpers';
 
 @Injectable()
 export class AuthService {
@@ -15,22 +24,22 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  findAll() {
-    return `This action returns all auth`;
-  }
-
-  generateTokens({ userId, roleId, roleName }: AcessTokenPayloadCreate) {
-    console.log('gọi dâdy');
-    const accessToken = this.tokenService.signAccessToken({
-      userId,
-      roleId,
-      roleName,
+  async generateTokens({ userId, roleId, roleName }: AcessTokenPayloadCreate) {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.tokenService.signAccessToken({
+        userId,
+        roleId,
+        roleName,
+      }),
+      this.tokenService.signRefreshToken({ userId }),
+    ]);
+    const decodedRefreshToken =
+      await this.tokenService.verifyRefreshToken(refreshToken);
+    const create_refreshtoken = await this.authRepository.createRefreshToken({
+      token: refreshToken,
+      userId: userId,
+      expiresAt: new Date(decodedRefreshToken.exp * 1000),
     });
-
-    const refreshToken = this.tokenService.signRefreshToken({ userId });
-    console.log('  AccessToken: ', accessToken);
-    console.log('  RefreshToken: ', refreshToken);
-
     return { accessToken, refreshToken };
   }
   async login(body: LoginBodyType): Promise<LoginResType> {
@@ -38,7 +47,6 @@ export class AuthService {
       email: body.email,
     });
 
-    console.log('check user email: ', user);
 
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
@@ -60,8 +68,6 @@ export class AuthService {
       throw new UnauthorizedException('Tài khoản chưa được phân quyền');
     }
 
-    console.log('đến đây');
-
     return this.generateTokens({
       userId: user.id,
       roleId: user.roleId,
@@ -69,11 +75,65 @@ export class AuthService {
     });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
+  async refreshToken({ refreshToken }: RefreshTokenBodyType) {
+    try {
+      const { userId } =
+        await this.tokenService.verifyRefreshToken(refreshToken);
+
+      const refreshTokenInDb =
+        await this.authRepository.findUniqueRefreshTokenIncludeUserRole({
+          token: refreshToken,
+        });
+
+      if (!refreshTokenInDb) {
+        throw new UnauthorizedException('Refresh token không hợp lệ');
+      }
+
+      const {
+        user: { roleId },
+      } = refreshTokenInDb;
+
+      const { user } = refreshTokenInDb;
+
+      if (!user?.role) {
+        throw new UnauthorizedException('Tài khoản chưa được phân quyền');
+      }
+
+      const $deleteRefreshToken = this.authRepository.deleteRefreshToken({
+        token: refreshToken,
+      });
+      const $tokens = this.generateTokens({
+        userId,
+        roleId: roleId as number,
+        roleName: user.role.name,
+      });
+      const [, tokens] = await Promise.all([$deleteRefreshToken, $tokens]);
+      return tokens;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Refresh token không hợp lệ');
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  async logout(refreshToken: string) {
+    try {
+      // 1. Kiểm tra refreshToken có hợp lệ không
+      await this.tokenService.verifyRefreshToken(refreshToken);
+      // 2. Xóa refreshToken trong database
+      await this.authRepository.deleteRefreshToken({
+        token: refreshToken,
+      });
+
+      return { message: 'Đăng xuất thành công' };
+    } catch (error) {
+      // Trường hợp đã refresh token rồi, hãy thông báo cho user biết
+      // refresh token của họ đã bị đánh cắp
+      if (isUniqueConstraintError(error)) {
+        throw new UnauthorizedException('Refresh Token đã được sử dụng');
+      }
+      throw new UnauthorizedException('Refresh token không hợp lệ');
+    }
   }
 }

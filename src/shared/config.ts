@@ -14,7 +14,7 @@ if (!fs.existsSync(path.resolve('.env'))) {
 }
 
 const configSchema = z.object({
-  DB_SCHEMA: z.string(),
+  DB_DATABASE: z.string(),
   ACCESS_TOKEN_SECRET: z.string(),
   ACCESS_TOKEN_EXPIRES_IN: z.string() as z.ZodType<StringValue>,
   REFRESH_TOKEN_SECRET: z.string(),

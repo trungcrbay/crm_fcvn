@@ -24,13 +24,47 @@ export const GetCustomersQuerySchema = SharedQuerySchema.extend({
   roleId: z.coerce.number().int().positive().optional(),
 });
 
-export const CreateCustomerBodySchema = CustomerSchema.pick({
-  email: true,
-  name: true,
-  phone: true,
-  address: true,
-  customerCode: true,
-}).strict();
+export const CreateCustomerBodySchema = z
+  .object({
+    email: z
+      .string({
+        error: 'Email không được để trống',
+      })
+      .trim()
+      .toLowerCase()
+      .email('Email không hợp lệ'),
+
+    name: z
+      .string({
+        error: 'Tên khách hàng không được để trống',
+      })
+      .trim()
+      .min(1, 'Tên khách hàng không được để trống')
+      .max(100, 'Tên khách hàng không được vượt quá 100 ký tự'),
+
+    phone: z
+      .string({
+        error: 'Số điện thoại không được để trống',
+      })
+      .trim()
+      .regex(/^(0|\+84|84)[0-9]{9,10}$/, 'Số điện thoại không hợp lệ'),
+
+    address: z
+      .string({
+        error: 'Địa chỉ không được để trống',
+      })
+      .trim()
+      .max(500, 'Địa chỉ không được vượt quá 500 ký tự'),
+
+    customerCode: z
+      .string({
+        error: 'Mã khách hàng không được để trống',
+      })
+      .trim()
+      .min(1, 'Mã khách hàng không được để trống')
+      .max(50, 'Mã khách hàng không được vượt quá 50 ký tự'),
+  })
+  .strict();
 
 export const UpdateCustomerBodySchema =
   CreateCustomerBodySchema.partial().strict();

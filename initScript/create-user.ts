@@ -44,7 +44,7 @@ const SALT_ROUNDS = 10;
 const ADMIN = {
   role: 'MASTER',
   email: 'admin@fcvn.vn',
-  password: '123456',
+  password: process.env.DB_ADMIN_PASSWORD_TEST as string,
   name: 'Admin hệ thống',
   phone: '0900000001',
 };
@@ -52,7 +52,7 @@ const ADMIN = {
 const SALES = {
   role: 'SALES',
   email: 'sales@fcvn.vn',
-  password: '123456',
+  password: process.env.DB_SALES_PASSWORD_TEST as string,
   name: 'Nhân viên Sales',
   phone: '0900000002',
 };
@@ -62,8 +62,8 @@ const dataSource = new DataSource({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 5432),
   username: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_SCHEMA || 'test',
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE || 'nestjs_crm',
   entities: [Role, User],
   synchronize: false,
   logging: false,
@@ -134,25 +134,7 @@ async function seedUsers() {
 
   const roleRepository = dataSource.getRepository(Role);
   const userRepository = dataSource.getRepository(User);
-  const legacyRole = await roleRepository.findOne({
-    where: { name: 'CUSTOMER_CREATOR' },
-  });
 
-  if (legacyRole) {
-    const attachedUsers = await userRepository.find({
-      where: { roleId: Number(legacyRole.id) },
-    });
-
-    if (attachedUsers.length > 0) {
-      await userRepository.remove(attachedUsers);
-      console.log(
-        `Removed ${attachedUsers.length} user(s) thuộc role CUSTOMER_CREATOR cũ`,
-      );
-    }
-
-    await roleRepository.remove(legacyRole);
-    console.log('Removed legacy role: CUSTOMER_CREATOR');
-  }
   const masterRole = await createRole(
     roleRepository,
     ADMIN.role,
