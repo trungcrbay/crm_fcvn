@@ -1,81 +1,36 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PaginatedResult } from '../../shared/repositories/base.repository';
 import { PaginationQueryType } from '../../shared/model/request.model';
 import { CustomersRepository } from './customers.repository';
 import { Customer } from './customer.entity';
 import { CreateCustomerBodyDTO, UpdateCustomerBodyDTO } from './customer.dto';
 import { QueryOptions } from 'src/shared/model/query.model';
+import { isUniqueConstraintError } from 'src/shared/helpers';
 
 @Injectable()
 export class CustomersService {
   constructor(private readonly customersRepository: CustomersRepository) {}
 
   async create(createCustomerDto: CreateCustomerBodyDTO): Promise<Customer> {
-    const customerCode = createCustomerDto.customerCode?.trim();
-    const name = createCustomerDto.name?.trim();
-    const email = createCustomerDto.email?.trim().toLowerCase();
-    const phone = createCustomerDto.phone?.trim();
-    const address = createCustomerDto.address?.trim();
+    const { customerCode, name, email, phone, address } = createCustomerDto;
 
-    if (!customerCode) {
-      throw new BadRequestException('Mã khách hàng không được để trống');
+    try {
+      const customer = await this.customersRepository.create({
+        customerCode: customerCode?.trim(),
+        name: name?.trim(),
+        email: email?.trim().toLowerCase(),
+        phone: phone?.trim(),
+        address: address?.trim(),
+      });
+
+      return customer;
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Mã hoặc email khách hàng đã tồn tại');
+      }
+
+      throw error;
     }
-
-    if (!name) {
-      throw new BadRequestException('Tên khách hàng không được để trống');
-    }
-
-    if (!email) {
-      throw new BadRequestException('Email không được để trống');
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new BadRequestException('Email không hợp lệ');
-    }
-
-    if (phone && !/^(\+84|84|0)[0-9]{9,10}$/.test(phone.replace(/\s+/g, ''))) {
-      throw new BadRequestException('Số điện thoại không hợp lệ');
-    }
-
-    const customersResult = await this.customersRepository.findAll();
-    const customers = Array.isArray(customersResult)
-      ? customersResult
-      : customersResult.data;
-
-    const existedCustomerCode = customers.some(
-      (item) =>
-        item.customerCode?.trim().toLowerCase() === customerCode.toLowerCase(),
-    );
-    const existedEmail = customers.some(
-      (item) => item.email?.toLowerCase() === email,
-    );
-    const existedPhone = phone
-      ? customers.some((item) => item.phone === phone)
-      : false;
-
-    if (existedCustomerCode) {
-      throw new ConflictException('Mã khách hàng đã tồn tại');
-    }
-
-    if (existedEmail) {
-      throw new ConflictException('Email đã tồn tại');
-    }
-
-    if (existedPhone) {
-      throw new ConflictException('Số điện thoại đã tồn tại');
-    }
-
-    return this.customersRepository.create({
-      customerCode,
-      name,
-      email,
-      phone,
-      address,
-    });
   }
 
   async findAll(

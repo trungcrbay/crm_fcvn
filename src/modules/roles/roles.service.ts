@@ -1,43 +1,27 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
-import { Permission } from '../../shared/constant/permission.constant';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { Role } from './role.entity';
 import { RolesRepository } from './roles.repository';
+import { isUniqueConstraintError } from 'src/shared/helpers';
+import { CreateRoleBodyDTO, UpdateRoleBodyDTO } from './role.dto';
 
 @Injectable()
 export class RolesService {
   constructor(private readonly rolesRepository: RolesRepository) {}
 
-  async create(data: Partial<Role>): Promise<Role> {
-    const name = data.name?.trim();
-    const permissions = data.permissions ?? [];
+  async create(data: CreateRoleBodyDTO): Promise<Role> {
+    try {
+      return await this.rolesRepository.create({
+        name: data.name,
+        permissions: data.permissions,
+        description: data.description,
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Role đã tồn tại');
+      }
 
-    if (!name) {
-      throw new BadRequestException('Tên role không được để trống');
+      throw error;
     }
-
-    if (!Array.isArray(permissions)) {
-      throw new BadRequestException('Permissions không hợp lệ');
-    }
-
-    const existed = await this.rolesRepository.findAll();
-    const items = Array.isArray(existed) ? existed : existed.data;
-    const hasDuplicateName = items.some(
-      (item) => item.name?.trim().toLowerCase() === name.toLowerCase(),
-    );
-
-    if (hasDuplicateName) {
-      throw new ConflictException('Role đã tồn tại');
-    }
-
-    const values = permissions.filter((permission) =>
-      Object.values(Permission).includes(permission as Permission),
-    );
-
-    return this.rolesRepository.create({
-      name,
-      permissions: values,
-      description: data.description?.trim(),
-    });
   }
 
   async findAll() {
@@ -48,24 +32,16 @@ export class RolesService {
     return this.rolesRepository.findOne(id);
   }
 
-  async update(id: string, data: Partial<Role>): Promise<Role | null> {
-    const payload: Partial<Role> = { ...data };
+  async update(id: string, data: UpdateRoleBodyDTO): Promise<Role | null> {
+    try {
+      return await this.rolesRepository.update(id, data);
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Role đã tồn tại');
+      }
 
-    if (typeof payload.name === 'string') {
-      payload.name = payload.name.trim();
+      throw error;
     }
-
-    if (Array.isArray(payload.permissions)) {
-      payload.permissions = payload.permissions.filter((permission) =>
-        Object.values(Permission).includes(permission as Permission),
-      );
-    }
-
-    if (typeof payload.description === 'string') {
-      payload.description = payload.description.trim();
-    }
-
-    return this.rolesRepository.update(id, payload);
   }
 
   async remove(id: string): Promise<void> {

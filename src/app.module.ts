@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { DatabaseModule } from './modules/database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { LoggingInterceptor } from './shared/interceptor/logging.interceptor';
@@ -15,6 +14,9 @@ import { ZodSerializerInterceptor } from 'nestjs-zod';
 import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthGuard } from './shared/guard/auth.guard';
+import { DatabaseModule } from './database/database.module';
+import { RefreshTokenModule } from './refresh-token/refresh-token.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { AuthGuard } from './shared/guard/auth.guard';
     CustomersModule,
     SharedModule,
     AuthModule,
+    RefreshTokenModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [

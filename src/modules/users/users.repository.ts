@@ -12,4 +12,14 @@ export class UsersRepository extends BaseRepository<User> {
   ) {
     super(repository);
   }
+  async findUniqueIncludeRolePermissions(where: {
+    id: number;
+  }): Promise<User | null> {
+    return this.repository.findOne({
+      where,
+      relations: {
+        role: true,
+      },
+    });
+  }
 }
