@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ZodValidationPipe } from 'nestjs-zod';
+import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import type { PaginatedResult } from '../../shared/repositories/base.repository';
 import {
   PaginationQuerySchema,
@@ -37,6 +37,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
+import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
+import { MessageResDTO } from 'src/shared/dto/response.dto';
 
 @Controller('users')
 @ApiTags('User')
@@ -62,8 +64,11 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  create(@Body() createUserDto: CreateUserBodyDTO): Promise<User> {
-    return this.usersService.create(createUserDto);
+  create(
+    @Body() createUserDto: CreateUserBodyDTO,
+    @ActiveUser('userId') userId: number,
+  ): Promise<User> {
+    return this.usersService.create(createUserDto, userId);
   }
 
   @Get()
@@ -135,11 +140,13 @@ export class UsersController {
   update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserBodyDTO,
+    @ActiveUser('userId') userId: number,
   ): Promise<User | null> {
-    return this.usersService.update(id, updateUserDto);
+    return this.usersService.update(id, updateUserDto, userId);
   }
 
   @Delete(':id')
+  @ZodSerializerDto(MessageResDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_DELETE])
   @ApiOperation({ summary: 'Xóa người dùng' })
   @ApiParam({
@@ -157,7 +164,7 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  remove(@Param('id') id: string): Promise<void> {
-    return this.usersService.remove(id);
+  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+    return this.usersService.remove(id, userId);
   }
 }

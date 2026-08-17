@@ -11,7 +11,10 @@ import { isUniqueConstraintError } from 'src/shared/helpers';
 export class CustomersService {
   constructor(private readonly customersRepository: CustomersRepository) {}
 
-  async create(createCustomerDto: CreateCustomerBodyDTO): Promise<Customer> {
+  async create(
+    createCustomerDto: CreateCustomerBodyDTO,
+    userId: number,
+  ): Promise<Customer> {
     const { customerCode, name, email, phone, address } = createCustomerDto;
 
     try {
@@ -21,6 +24,7 @@ export class CustomersService {
         email: email?.trim().toLowerCase(),
         phone: phone?.trim(),
         address: address?.trim(),
+        createdById: userId,
       });
 
       return customer;
@@ -53,11 +57,19 @@ export class CustomersService {
   async update(
     id: string,
     updateCustomerDto: UpdateCustomerBodyDTO,
+    userId: number,
   ): Promise<Customer | null> {
-    return this.customersRepository.update(id, updateCustomerDto);
+    const updatedBy = userId;
+    return this.customersRepository.update(id, {
+      ...updateCustomerDto,
+      updatedById: updatedBy,
+    });
   }
 
-  async remove(id: string): Promise<void> {
-    return this.customersRepository.remove(id);
+  async remove(id: string, userId: number) {
+    await this.customersRepository.remove(id, userId);
+    return {
+      message: 'Xóa khách hàng thành công',
+    };
   }
 }

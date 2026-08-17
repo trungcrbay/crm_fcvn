@@ -40,6 +40,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
+import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
+import { MessageResDTO } from 'src/shared/dto/response.dto';
 
 @Controller('customers')
 @ApiTags('Customers')
@@ -64,8 +66,11 @@ export class CustomersController {
     description: 'Bạn không có quyền thực hiện hành động này.',
     type: CreateCustomerBodyDTO,
   })
-  create(@Body() createCustomerDto: CreateCustomerBodyDTO): Promise<Customer> {
-    return this.customersService.create(createCustomerDto);
+  create(
+    @Body() createCustomerDto: CreateCustomerBodyDTO,
+    @ActiveUser('userId') userId: number,
+  ): Promise<Customer> {
+    return this.customersService.create(createCustomerDto, userId);
   }
 
   @Get()
@@ -125,11 +130,13 @@ export class CustomersController {
   update(
     @Param('id') id: string,
     @Body() updateCustomerDto: UpdateCustomerBodyDTO,
+    @ActiveUser('userId') userId: number,
   ): Promise<Customer | null> {
-    return this.customersService.update(id, updateCustomerDto);
+    return this.customersService.update(id, updateCustomerDto, userId);
   }
 
   @Delete(':id')
+  @ZodSerializerDto(MessageResDTO)
   @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_DELETE])
   @ApiOperation({ summary: 'Xóa khách hàng' })
   @ApiParam({
@@ -140,7 +147,7 @@ export class CustomersController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy khách hàng.',
   })
-  remove(@Param('id') id: string): Promise<void> {
-    return this.customersService.remove(id);
+  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+    return this.customersService.remove(id, userId);
   }
 }

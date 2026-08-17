@@ -3,6 +3,8 @@ import { QueryFailedError } from 'typeorm';
 import { CustomersService } from './customers.service';
 
 describe('CustomersService.create', () => {
+  const userId = 4;
+
   const buildRepository = () => ({
     create: jest.fn(),
     findAll: jest.fn(),
@@ -22,6 +24,7 @@ describe('CustomersService.create', () => {
 
   it('should create a valid customer with trimmed values', async () => {
     const repository = buildRepository();
+
     repository.create.mockResolvedValue({
       id: '1',
       customerCode: 'CUS-001',
@@ -30,29 +33,36 @@ describe('CustomersService.create', () => {
       phone: '0909123456',
       address: 'HCM',
       createdAt: new Date(),
+      createdById: userId,
       updatedAt: new Date(),
+      updatedById: null,
     });
 
     const service = new CustomersService(repository as any);
 
-    const result = await service.create({
-      customerCode: '  CUS-001  ',
-      name: '  Alice  ',
-      email: '  ALICE@example.com  ',
-      phone: ' 0909123456 ',
-      address: '  HCM  ',
-    });
+    const result = await service.create(
+      {
+        customerCode: '  CUS-001  ',
+        name: '  Alice  ',
+        email: '  ALICE@example.com  ',
+        phone: ' 0909123456 ',
+        address: '  HCM  ',
+      },
+      userId,
+    );
 
     expect(result.customerCode).toBe('CUS-001');
     expect(result.name).toBe('Alice');
     expect(result.email).toBe('alice@example.com');
     expect(result.phone).toBe('0909123456');
+
     expect(repository.create).toHaveBeenCalledWith({
       customerCode: 'CUS-001',
       name: 'Alice',
       email: 'alice@example.com',
       phone: '0909123456',
       address: 'HCM',
+      createdById: userId,
     });
   });
 
@@ -63,13 +73,16 @@ describe('CustomersService.create', () => {
     const service = new CustomersService(repository as any);
 
     await expect(
-      service.create({
-        customerCode: 'CUS-001',
-        name: 'Alice',
-        email: 'alice@example.com',
-        phone: '0909123456',
-        address: 'HCM',
-      }),
+      service.create(
+        {
+          customerCode: 'CUS-001',
+          name: 'Alice',
+          email: 'alice@example.com',
+          phone: '0909123456',
+          address: 'HCM',
+        },
+        userId,
+      ),
     ).rejects.toThrow(ConflictException);
   });
 
@@ -81,13 +94,16 @@ describe('CustomersService.create', () => {
     const service = new CustomersService(repository as any);
 
     await expect(
-      service.create({
-        customerCode: 'CUS-001',
-        name: 'Alice',
-        email: 'alice@example.com',
-        phone: '0909123456',
-        address: 'HCM',
-      }),
+      service.create(
+        {
+          customerCode: 'CUS-001',
+          name: 'Alice',
+          email: 'alice@example.com',
+          phone: '0909123456',
+          address: 'HCM',
+        },
+        userId,
+      ),
     ).rejects.toThrow('DB failure');
   });
 });
