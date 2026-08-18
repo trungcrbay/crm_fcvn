@@ -39,6 +39,22 @@ export enum Permission {
   PERMISSION_UPDATE = 'permission.update',
   PERMISSION_DELETE = 'permission.delete',
   PERMISSION_MANAGE = 'permission.manage',
+
+  // Supplier Module
+  SUPPLIER_READ = 'supplier.read',
+  SUPPLIER_CREATE = 'supplier.create',
+  SUPPLIER_UPDATE = 'supplier.update',
+  SUPPLIER_DELETE = 'supplier.delete',
+  SUPPLIER_MANAGE = 'supplier.manage',
+  SUPPLIER_CHANGE_STATUS = 'supplier.changeStatus',
+  SUPPLIER_ASSIGN_SUPPLIERS = 'supplier.assignSuppliers',
+
+  // Supplier Group Module
+  SUPPLIER_GROUP_READ = 'supplierGroup.read',
+  SUPPLIER_GROUP_CREATE = 'supplierGroup.create',
+  SUPPLIER_GROUP_UPDATE = 'supplierGroup.update',
+  SUPPLIER_GROUP_DELETE = 'supplierGroup.delete',
+  SUPPLIER_GROUP_MANAGE = 'supplierGroup.manage',
 }
 
 /**
@@ -69,6 +85,20 @@ export const MANAGE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.FACILITY_CREATE,
     Permission.FACILITY_UPDATE,
     Permission.FACILITY_DELETE,
+  ],
+
+  [Permission.SUPPLIER_MANAGE]: [
+    Permission.SUPPLIER_READ,
+    Permission.SUPPLIER_CREATE,
+    Permission.SUPPLIER_UPDATE,
+    Permission.SUPPLIER_DELETE,
+  ],
+
+  [Permission.SUPPLIER_GROUP_MANAGE]: [
+    Permission.SUPPLIER_GROUP_READ,
+    Permission.SUPPLIER_GROUP_CREATE,
+    Permission.SUPPLIER_GROUP_UPDATE,
+    Permission.SUPPLIER_GROUP_DELETE,
   ],
 };
 

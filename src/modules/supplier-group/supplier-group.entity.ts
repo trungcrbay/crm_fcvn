@@ -2,6 +2,7 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { BaseEntity } from '../../shared/entities/base.entity';
 import { Supplier } from '../supplier/supplier.entity';
+import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
 
 @Entity('supplier_groups')
 export class SupplierGroup extends BaseEntity {
@@ -29,4 +30,12 @@ export class SupplierGroup extends BaseEntity {
 
   @OneToMany(() => Supplier, (supplier) => supplier.supplierGroup)
   suppliers: Supplier[];
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    enum: SupplierGroupStatus,
+    default: SupplierGroupStatus.ACTIVE,
+  })
+  status: SupplierGroupStatus;
 }

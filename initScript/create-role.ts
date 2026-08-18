@@ -3,6 +3,7 @@ import { Role } from '../src/modules/roles/role.entity';
 import { Permission } from '../src/shared/constant/permission.constant';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { User } from '../src/modules/users/user.entity';
 
 const loadEnvFile = () => {
   const envPath = resolve(process.cwd(), '.env');
@@ -166,7 +167,7 @@ const dataSource = new DataSource({
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'test',
-  entities: [Role],
+  entities: [Role, User],
   synchronize: false,
   logging: false,
 });

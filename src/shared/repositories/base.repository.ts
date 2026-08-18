@@ -1,7 +1,8 @@
-import { DeepPartial, Like, Repository } from 'typeorm';
+import { DeepPartial, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { QueryOptions } from '../model/query.model';
+import { QueryDeepPartialEntity } from 'typeorm/browser';
 
-export type EntityId = string | number;
+export type EntityId = number | string;
 
 export interface PaginationMeta {
   page: number;
@@ -15,7 +16,12 @@ export interface PaginatedResult<T> {
   meta: PaginationMeta;
 }
 
-export class BaseRepository<T extends { id?: EntityId }> {
+export type SoftDeletableEntity = {
+  deletedAt?: Date;
+  deletedById?: EntityId;
+};
+
+export class BaseRepository<T extends { id?: EntityId } & SoftDeletableEntity> {
   constructor(protected readonly repository: Repository<T>) {}
 
   async create(data: DeepPartial<T>): Promise<T> {
@@ -29,6 +35,8 @@ export class BaseRepository<T extends { id?: EntityId }> {
     const safePage = page > 0 ? page : 1;
     const safeLimit = limit > 0 ? limit : 10;
     const skip = (safePage - 1) * safeLimit;
+
+    const relations = options.relations;
 
     const where = this.buildSearchWhere(options);
     const order = options.sortOrder
@@ -47,6 +55,7 @@ export class BaseRepository<T extends { id?: EntityId }> {
         skip,
         take: safeLimit,
         order,
+        relations,
       });
 
       const totalPages = Math.ceil(total / safeLimit) || 1;
@@ -62,7 +71,9 @@ export class BaseRepository<T extends { id?: EntityId }> {
       };
     }
 
-    return this.repository.find();
+    return this.repository.find({
+      relations,
+    });
   }
 
   async findOne(id: EntityId): Promise<T | null> {
@@ -76,12 +87,44 @@ export class BaseRepository<T extends { id?: EntityId }> {
     return this.findOne(id);
   }
 
+  async updateMany(ids: EntityId[], data: DeepPartial<T>): Promise<T[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    await this.repository.update(
+      {
+        id: In(ids),
+      } as FindOptionsWhere<T>,
+      data as any,
+    );
+
+    return this.repository.find({
+      where: {
+        id: In(ids),
+      } as FindOptionsWhere<T>,
+    });
+  }
+
+  async findByIds(ids: EntityId[]): Promise<T[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.repository.find({
+      where: {
+        id: In(ids),
+      } as FindOptionsWhere<T>,
+    });
+  }
+
   async remove(id: EntityId, deletedById?: EntityId): Promise<void> {
     if (deletedById !== undefined) {
-      await this.repository.update(id, {
+      const payload: QueryDeepPartialEntity<SoftDeletableEntity> = {
         deletedAt: new Date(),
         deletedById,
-      } as any);
+      };
+      await this.repository.update(id, payload);
       return;
     }
 

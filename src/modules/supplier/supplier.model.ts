@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { SharedQuerySchema } from 'src/shared/model/query.model';
 import { PaginationResSchema } from 'src/shared/model/response.model';
+import { SupplierStatus } from 'src/shared/constant/supplier.constant';
 
 export const SupplierSchema = z.object({
   id: z.number(),
@@ -22,6 +23,13 @@ export const SupplierSchema = z.object({
   updatedAt: z.date(),
 });
 
+export const ChangeStatusSupplierBodySchema = z
+  .object({
+    status: z.nativeEnum(SupplierStatus, {
+      error: 'Trạng thái nhà cung cấp không hợp lệ',
+    }),
+  })
+  .strict();
 export const GetSuppliersResSchema = z.object({
   data: z.array(SupplierSchema),
   meta: PaginationResSchema,

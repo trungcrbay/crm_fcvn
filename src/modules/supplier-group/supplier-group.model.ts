@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
 import { SharedQuerySchema } from 'src/shared/model/query.model';
 import { PaginationResSchema } from 'src/shared/model/response.model';
+import { SupplierSchema } from '../supplier/supplier.model';
 
 export const SupplierGroupSchema = z.object({
   id: z.number(),
@@ -17,6 +18,8 @@ export const SupplierGroupSchema = z.object({
 
   createdAt: z.date(),
   updatedAt: z.date(),
+
+  suppliers: z.array(SupplierSchema).optional(),
 });
 
 export const GetSupplierGroupsResSchema = z.object({
@@ -64,6 +67,22 @@ export const CreateSupplierGroupBodySchema = z
   })
   .strict();
 
+export const ChangeStatusSupplierGroupBodySchema = z
+  .object({
+    status: z.nativeEnum(SupplierGroupStatus, {
+      error: 'Trạng thái nhóm nhà cung cấp không hợp lệ',
+    }),
+  })
+  .strict();
+
+export const AssignSuppliersToGroupBodySchema = z
+  .object({
+    supplierIds: z
+      .array(z.coerce.number().int().positive('ID nhà cung cấp không hợp lệ'))
+      .min(1, 'Phải chọn ít nhất một nhà cung cấp'),
+  })
+  .strict();
+
 export const UpdateSupplierGroupBodySchema = CreateSupplierGroupBodySchema.omit(
   {
     status: true,
@@ -86,4 +105,12 @@ export type CreateSupplierGroupBodyType = z.infer<
 
 export type UpdateSupplierGroupBodyType = z.infer<
   typeof UpdateSupplierGroupBodySchema
+>;
+
+export type ChangeStatusSupplierGroupBodyType = z.infer<
+  typeof ChangeStatusSupplierGroupBodySchema
+>;
+
+export type AssignSuppliersToGroupBodyType = z.infer<
+  typeof AssignSuppliersToGroupBodySchema
 >;
