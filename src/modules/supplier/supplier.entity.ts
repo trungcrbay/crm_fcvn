@@ -9,7 +9,7 @@ import {
 
 import { BaseEntity } from '../../shared/entities/base.entity';
 import { SupplierGroup } from '../supplier-group/supplier-group.entity';
-import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
+import { SupplierStatus } from 'src/shared/constant/supplier.constant';
 
 @Entity('suppliers')
 export class Supplier extends BaseEntity {
@@ -68,8 +68,8 @@ export class Supplier extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 20,
-    enum: SupplierGroupStatus,
-    default: SupplierGroupStatus.ACTIVE,
+    enum: SupplierStatus,
+    default: SupplierStatus.ACTIVE,
   })
-  status: SupplierGroupStatus;
+  status: SupplierStatus;
 }

@@ -1,6 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 
 import {
+  ChangeStatusSupplierBodySchema,
   CreateSupplierBodySchema,
   GetSuppliersQuerySchema,
   GetSuppliersResSchema,
@@ -19,4 +20,8 @@ export class CreateSupplierBodyDTO extends createZodDto(
 
 export class UpdateSupplierBodyDTO extends createZodDto(
   UpdateSupplierBodySchema,
+) {}
+
+export class ChangeStatusSupplierBodyDTO extends createZodDto(
+  ChangeStatusSupplierBodySchema,
 ) {}

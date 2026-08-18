@@ -1,3 +1,4 @@
+import { FindOptionsRelations } from 'typeorm';
 import { z } from 'zod';
 
 export const SharedQuerySchema = z
@@ -12,10 +13,11 @@ export const SharedQuerySchema = z
   })
   .strict();
 
-export interface QueryOptions {
+export interface QueryOptions<T = any> {
   page?: number;
   limit?: number;
   search?: string;
   sortOrder?: 'ASC' | 'DESC';
   where?: Record<string, any>;
+  relations?: FindOptionsRelations<T>;
 }
