@@ -4,7 +4,7 @@ import {
   GetCustomersQuerySchema,
   GetCustomersResSchema,
   UpdateCustomerBodySchema,
-} from './customer.model';
+} from './customers.model';
 
 export class GetCustomersResDTO extends createZodDto(GetCustomersResSchema) {}
 

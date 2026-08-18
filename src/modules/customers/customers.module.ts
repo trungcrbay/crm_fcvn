@@ -1,14 +1,31 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Customer } from './customer.entity';
-import { CustomersController } from './customers.controller';
-import { CustomersRepository } from './customers.repository';
-import { CustomersService } from './customers.service';
+import { CustomersRepository } from './infrastructure/persistence/customers.repository';
+import { CustomersController } from './presentation/customers.controller';
+import {
+  CreateCustomerUseCase,
+  FindAllCustomersUseCase,
+  FindOneCustomerUseCase,
+  UpdateCustomerUseCase,
+  RemoveCustomerUseCase,
+} from './application/use-cases';
+import { CUSTOMERS_REPOSITORY } from './domain/customers.repository.interface';
+import { CustomerOrmEntity } from './infrastructure/persistence/customers.orm-entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Customer])],
+  imports: [TypeOrmModule.forFeature([CustomerOrmEntity])],
   controllers: [CustomersController],
-  providers: [CustomersRepository, CustomersService],
-  exports: [CustomersService, CustomersRepository],
+  providers: [
+    CreateCustomerUseCase,
+    FindAllCustomersUseCase,
+    FindOneCustomerUseCase,
+    UpdateCustomerUseCase,
+    RemoveCustomerUseCase,
+    {
+      provide: CUSTOMERS_REPOSITORY,
+      useClass: CustomersRepository,
+    },
+  ],
+  exports: [CUSTOMERS_REPOSITORY],
 })
 export class CustomersModule {}

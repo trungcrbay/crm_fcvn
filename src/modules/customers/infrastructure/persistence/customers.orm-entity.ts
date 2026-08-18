@@ -1,8 +1,12 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import { BaseEntity } from '../../shared/entities/base.entity';
+import { BaseEntity } from '../../../../shared/entities/base.entity';
 
+/**
+ * ORM Entity - chi tiết hạ tầng TypeORM.
+ * KHÔNG được import vào domain/application/presentation.
+ */
 @Entity('customers')
-export class Customer extends BaseEntity {
+export class CustomerOrmEntity extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
   id: string;
 

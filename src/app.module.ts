@@ -6,7 +6,6 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { LoggingInterceptor } from './shared/interceptor/logging.interceptor';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
-import { CustomersModule } from './modules/customers/customers.module';
 import { HttpExceptionFilter } from './shared/filter/http-exception.filter';
 import CustomZodValidationPipe from './shared/pipe/custom-zod-validation.pipe';
 import { TransformInterceptor } from './shared/interceptor/transform.interceptor';
@@ -21,6 +20,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware';
 import { SupplierModule } from './modules/supplier/supplier.module';
 import { SupplierGroupModule } from './modules/supplier-group/supplier-group.module';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
