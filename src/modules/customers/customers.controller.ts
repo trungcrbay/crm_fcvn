@@ -35,13 +35,12 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 
 @Controller('customers')
 @ApiTags('Customers')
@@ -77,7 +76,6 @@ export class CustomersController {
   @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_READ])
   @ZodSerializerDto(GetCustomersResDTO)
   @ApiOperation({ summary: 'Lấy danh sách khách hàng' })
-  @ApiQuery(PaginationQueryDTO)
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách khách hàng thành công.',
@@ -87,6 +85,7 @@ export class CustomersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
+  @ApiPaginationQuery()
   findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryType,

@@ -55,6 +55,12 @@ export enum Permission {
   SUPPLIER_GROUP_UPDATE = 'supplierGroup.update',
   SUPPLIER_GROUP_DELETE = 'supplierGroup.delete',
   SUPPLIER_GROUP_MANAGE = 'supplierGroup.manage',
+  SUPPLIER_GROUP_CHANGE_STATUS = 'supplierGroup.changeStatus',
+
+  // Purchar Order Module
+  PURCHASE_ORDER_READ = 'purchaseOrder.read',
+  PURCHASE_ORDER_MANAGE = 'purchaseOrder.manage',
+  PURCHASE_ORDER_CREATE = 'purchaseOrder.create',
 }
 
 /**

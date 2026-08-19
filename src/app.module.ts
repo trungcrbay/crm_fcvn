@@ -21,6 +21,9 @@ import { LoggerModule } from 'nestjs-pino';
 import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware';
 import { SupplierModule } from './modules/supplier/supplier.module';
 import { SupplierGroupModule } from './modules/supplier-group/supplier-group.module';
+import { IdempotencyInterceptor } from './shared/interceptor/idempotent.interceptor';
+import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
+import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-order-item.module';
 
 @Module({
   imports: [
@@ -36,6 +39,8 @@ import { SupplierGroupModule } from './modules/supplier-group/supplier-group.mod
     ProfileModule,
     SupplierModule,
     SupplierGroupModule,
+    PurchaseOrderModule,
+    PurchaseOrderItemModule,
   ],
   controllers: [AppController],
   providers: [
@@ -57,6 +62,10 @@ import { SupplierGroupModule } from './modules/supplier-group/supplier-group.mod
       useClass: HttpExceptionFilter,
     },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: IdempotencyInterceptor,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: ZodSerializerInterceptor,

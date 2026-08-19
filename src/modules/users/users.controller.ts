@@ -32,13 +32,12 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 
 @Controller('users')
 @ApiTags('User')
@@ -74,7 +73,6 @@ export class UsersController {
   @Get()
   @Permissions([Permission.USER_MANAGE, Permission.USER_READ])
   @ApiOperation({ summary: 'Lấy danh sách người dùng' })
-  @ApiQuery(PaginationQueryDTO)
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách người dùng thành công.',
@@ -84,6 +82,7 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
+  @ApiPaginationQuery()
   findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryType,
