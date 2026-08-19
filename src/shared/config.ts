@@ -23,6 +23,7 @@ const configSchema = z.object({
   PORT: z.string(),
   DB_USER: z.string(),
   DB_PASSWORD: z.string(),
+  IDEMPOTENCY_KEY: z.string(),
 });
 
 const configServer = configSchema.safeParse(process.env);

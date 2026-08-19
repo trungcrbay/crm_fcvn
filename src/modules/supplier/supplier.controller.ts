@@ -20,7 +20,6 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -40,6 +39,7 @@ import { PaginationQuerySchema } from 'src/shared/model/request.model';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 
 @Controller('supplier')
 @ApiTags('Supplier')
@@ -75,7 +75,6 @@ export class SupplierController {
   @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_READ])
   @ZodSerializerDto(GetSuppliersResDTO)
   @ApiOperation({ summary: 'Lấy danh sách nhà cung cấp' })
-  @ApiQuery(PaginationQueryDTO)
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách nhà cung cấp thành công.',
@@ -85,6 +84,7 @@ export class SupplierController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
+  @ApiPaginationQuery()
   findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryDTO,
