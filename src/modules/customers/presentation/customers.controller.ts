@@ -49,6 +49,7 @@ import {
   UpdateCustomerBodyDTO,
 } from '../application/customers.dto';
 import { CustomerEntity } from '../domain/customers.entity';
+import { CustomerResponse } from '../application/mappers/customer-response.mapper';
 
 @Controller('customers')
 @ApiTags('Customers')
@@ -75,7 +76,7 @@ export class CustomersController {
   create(
     @Body() createCustomerDto: CreateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<CustomerEntity> {
+  ): Promise<CustomerResponse> {
     return this.createCustomerUseCase.execute(createCustomerDto, userId);
   }
 
@@ -94,7 +95,7 @@ export class CustomersController {
   findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryType,
-  ): Promise<CustomerEntity[] | PaginatedResult<CustomerEntity>> {
+  ): Promise<CustomerResponse[] | PaginatedResult<CustomerResponse>> {
     return this.findAllCustomersUseCase.execute(query);
   }
 

@@ -4,7 +4,7 @@ import { CustomerOrmEntity } from './customers.orm-entity';
 export class CustomerMapper {
   static toDomain(orm: CustomerOrmEntity): CustomerEntity {
     return CustomerEntity.create({
-      id: String(orm.id),
+      id: orm.id,
       customerCode: orm.customerCode,
       name: orm.name,
       email: orm.email,

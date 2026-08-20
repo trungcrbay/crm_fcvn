@@ -12,7 +12,7 @@ export default new DataSource({
   password: process.env.DB_PASSWORD ?? 'postgres',
   database: process.env.DB_DATABASE ?? 'nestjs_crm',
 
-  entities: ['src/**/*.entity.ts'],
+  entities: ['src/**/*.entity.ts', 'src/**/*.orm-entity.ts'],
 
   migrations: ['src/database/migrations/*.ts'],
 

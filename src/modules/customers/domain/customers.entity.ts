@@ -4,7 +4,7 @@ import { CustomerCode } from './value-objects/customer-code.vo';
 
 export class CustomerEntity {
   private constructor(
-    public readonly id: string,
+    public readonly id: number,
     private _customerCode: CustomerCode,
     private _name: string,
     private _email: Email,
@@ -31,7 +31,7 @@ export class CustomerEntity {
   }
 
   static create(props: {
-    id: string;
+    id: number;
     customerCode: string;
     name: string;
     email: string;

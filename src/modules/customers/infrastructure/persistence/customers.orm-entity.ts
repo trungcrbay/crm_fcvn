@@ -8,7 +8,7 @@ import { BaseEntity } from '../../../../shared/entities/base.entity';
 @Entity('customers')
 export class CustomerOrmEntity extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
-  id: string;
+  id: number;
 
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 50, unique: true })
@@ -21,7 +21,6 @@ export class CustomerOrmEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
-  @Index({ unique: true })
   @Column({ type: 'varchar', length: 255, nullable: true })
   phone: string;
 

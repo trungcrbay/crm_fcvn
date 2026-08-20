@@ -6,7 +6,10 @@ import {
   type ICustomersRepository,
 } from '../../domain/customers.repository.interface';
 import { CreateCustomerBodyDTO } from '../customers.dto';
-import { CustomerEntity } from '../../domain/customers.entity';
+import {
+  CustomerResponse,
+  CustomerResponseMapper,
+} from '../mappers/customer-response.mapper';
 
 @Injectable()
 export class CreateCustomerUseCase {
@@ -18,11 +21,11 @@ export class CreateCustomerUseCase {
   async execute(
     dto: CreateCustomerBodyDTO,
     userId: number,
-  ): Promise<CustomerEntity> {
+  ): Promise<CustomerResponse> {
     const { customerCode, name, email, phone, address } = dto;
 
     try {
-      return await this.customersRepository.create({
+      const entity = await this.customersRepository.create({
         customerCode: customerCode?.trim(),
         name: name?.trim(),
         email: email?.trim().toLowerCase(),
@@ -30,6 +33,7 @@ export class CreateCustomerUseCase {
         address: address?.trim(),
         createdById: userId,
       });
+      return CustomerResponseMapper.toResponse(entity);
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('Mã hoặc email khách hàng đã tồn tại');

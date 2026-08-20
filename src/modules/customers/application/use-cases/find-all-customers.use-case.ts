@@ -6,7 +6,10 @@ import {
 import { PaginatedResult } from '../../../../shared/repositories/base.repository';
 import { PaginationQueryType } from '../../../../shared/model/request.model';
 import { QueryOptions } from '../../../../shared/model/query.model';
-import { CustomerEntity } from '../../domain/customers.entity';
+import {
+  CustomerResponse,
+  CustomerResponseMapper,
+} from '../mappers/customer-response.mapper';
 
 @Injectable()
 export class FindAllCustomersUseCase {
@@ -17,7 +20,7 @@ export class FindAllCustomersUseCase {
 
   async execute(
     query: PaginationQueryType = { page: 1, limit: 10 },
-  ): Promise<CustomerEntity[] | PaginatedResult<CustomerEntity>> {
+  ): Promise<CustomerResponse[] | PaginatedResult<CustomerResponse>> {
     const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
@@ -25,6 +28,7 @@ export class FindAllCustomersUseCase {
       sortOrder: query.sortOrder,
     };
 
-    return this.customersRepository.findAll(options);
+    const result = await this.customersRepository.findAll(options);
+    return CustomerResponseMapper.toPaginatedResponse(result);
   }
 }
