@@ -4,7 +4,6 @@ import { Body, Controller, Headers, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
-  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOperation,
@@ -30,10 +29,6 @@ export class PurchaseOrderController {
     description: 'Tạo mới phiếu mua hàng thành công.',
     type: PurchaseOrder,
   })
-  @ApiConflictResponse({
-    description: 'Thông tin phiếu mua hàng đã tồn tại.',
-    type: CreatePurchaseOrderBodyDTO,
-  })
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
     type: CreatePurchaseOrderBodyDTO,
@@ -56,10 +51,6 @@ export class PurchaseOrderController {
   @Post('/reproduce')
   @ApiOperation({ summary: 'Giả lập lỗi tạo phiếu mua hàng' })
   @ApiBody({ type: CreatePurchaseOrderBodyDTO })
-  @ApiConflictResponse({
-    description: 'Thông tin phiếu mua hàng đã tồn tại.',
-    type: CreatePurchaseOrderBodyDTO,
-  })
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
     type: CreatePurchaseOrderBodyDTO,

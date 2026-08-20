@@ -27,7 +27,7 @@ const swaggerUiOptions: SwaggerCustomOptions = {
   swaggerOptions: {
     persistAuthorization: true,
   },
-  customSiteTitle: 'Dummy API Documentation',
+  customSiteTitle: 'CRM API Documentation',
 };
 
 export function configureSwaggerUI(app: INestApplication) {

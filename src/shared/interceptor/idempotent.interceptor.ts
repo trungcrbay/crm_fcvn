@@ -42,16 +42,12 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     const cached = await this.idempotencyService.getResponse(idempotencyKey);
     if (cached !== undefined) {
-      console.log('[Idempotency] Return cached response:', idempotencyKey);
-
       return of(cached);
     }
 
     const lockAcquired =
       await this.idempotencyService.acquireLock(idempotencyKey);
     if (!lockAcquired) {
-      console.log('[Idempotency] Duplicate request, waiting:', idempotencyKey);
-
       const sameResponse =
         await this.idempotencyService.waitForResponse(idempotencyKey);
       if (sameResponse !== undefined) {
