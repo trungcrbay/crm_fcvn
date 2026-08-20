@@ -59,6 +59,9 @@ export class SupplierGroupService {
       relations: {
         suppliers: true,
       },
+      where: {
+        status: SupplierGroupStatus.ACTIVE,
+      },
     };
 
     return this.supplierGroupRepository.findAll(options);

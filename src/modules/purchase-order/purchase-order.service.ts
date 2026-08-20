@@ -60,8 +60,6 @@ export class PurchaseOrderService {
     const cachedResponse =
       await this.idempotencyService.getResponse<PurchaseOrder>(idempotencyKey);
 
-    console.log('cachedResponse: ', cachedResponse);
-
     if (cachedResponse) {
       return cachedResponse;
     }
@@ -93,14 +91,6 @@ export class PurchaseOrderService {
         return response;
       }
 
-      /**
-       * Redis không có response sau khi wait.
-       *
-       * Có thể request đầu:
-       * - đã commit DB nhưng chưa save Redis
-       * - process crash
-       * - Redis response bị mất
-       */
       //lấy lại response
       const existingAfterWait = await this.findByIdempotencyKey(idempotencyKey);
 
@@ -115,9 +105,6 @@ export class PurchaseOrderService {
     }
 
     try {
-      /**
-       * 3. Tất cả thao tác DB nằm trong cùng transaction.
-       */
       const result = await this.dataSource.transaction(async (manager) => {
         const poRepository = manager.getRepository(PurchaseOrder);
 
@@ -245,8 +232,6 @@ export class PurchaseOrderService {
     );
 
     await itemRepository.save(items);
-
-    console.log('6. ITEMS SAVED');
 
     throw new InternalServerErrorException('TEST: update total failed');
   }
