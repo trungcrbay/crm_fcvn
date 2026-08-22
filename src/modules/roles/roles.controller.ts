@@ -24,6 +24,7 @@ import { Permission } from 'src/shared/constant/permission.constant';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -44,6 +45,7 @@ import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 @SkipThrottle()
 @Controller('roles')
 @ApiTags('Roles')
+@ApiBearerAuth()
 @UseGuards(PermissionGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
@@ -110,7 +112,7 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<Role | null> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Role> {
     return this.rolesService.findOne(id);
   }
 

@@ -1,6 +1,6 @@
 import { DeepPartial, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { QueryOptions } from '../model/query.model';
-import { QueryDeepPartialEntity } from 'typeorm/browser';
+import { QueryDeepPartialEntity } from 'typeorm';
 
 export type EntityId = number | string;
 

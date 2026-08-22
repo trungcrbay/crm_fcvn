@@ -17,6 +17,7 @@ import { User } from './user.entity';
 import { UsersService } from './users.service';
 import {
   CreateUserBodyDTO,
+  GetUsersResDTO,
   UpdateUserBodyDTO,
   UserDetailDTO,
   UserPublicDTO,
@@ -79,6 +80,7 @@ export class UsersController {
   }
 
   @Get()
+  @ZodSerializerDto(GetUsersResDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_READ])
   @ApiOperation({ summary: 'Lấy danh sách người dùng' })
   @ApiResponse({
@@ -123,7 +125,7 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<User | null> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
     return this.usersService.findOne(id);
   }
 

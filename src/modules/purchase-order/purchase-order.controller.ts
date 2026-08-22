@@ -39,7 +39,7 @@ import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 import { ConfigService } from '@nestjs/config';
 
 @SkipThrottle()
-@Controller('purchase-order')
+@Controller('purchase-orders')
 @ApiTags('Purchase Order')
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
