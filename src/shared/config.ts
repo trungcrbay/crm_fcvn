@@ -14,16 +14,16 @@ if (!fs.existsSync(path.resolve('.env'))) {
 }
 
 const configSchema = z.object({
-  DB_DATABASE: z.string(),
-  ACCESS_TOKEN_SECRET: z.string(),
-  ACCESS_TOKEN_EXPIRES_IN: z.string() as z.ZodType<StringValue>,
-  REFRESH_TOKEN_SECRET: z.string(),
-  REFRESH_TOKEN_EXPIRES_IN: z.string() as z.ZodType<StringValue>,
-  DB_HOST: z.string(),
-  PORT: z.string(),
-  DB_USER: z.string(),
-  DB_PASSWORD: z.string(),
-  IDEMPOTENCY_KEY: z.string(),
+  DB_DATABASE: z.string().min(1),
+  ACCESS_TOKEN_SECRET: z.string().min(1),
+  ACCESS_TOKEN_EXPIRES_IN: z.string().min(1) as z.ZodType<StringValue>,
+  REFRESH_TOKEN_SECRET: z.string().min(1),
+  REFRESH_TOKEN_EXPIRES_IN: z.string().min(1) as z.ZodType<StringValue>,
+  DB_HOST: z.string().min(1),
+  PORT: z.string().min(1),
+  DB_USER: z.string().min(1),
+  DB_PASSWORD: z.string().min(1),
+  IDEMPOTENCY_KEY: z.string().min(1),
 });
 
 const configServer = configSchema.safeParse(process.env);

@@ -66,7 +66,6 @@ Global wiring trong `src/app.module.ts`:
 | `APP_FILTER`      | `HttpExceptionFilter`      | `shared/filter/http-exception.filter.ts`       |
 | `APP_INTERCEPTOR` | `LoggingInterceptor`       | `shared/interceptor/logging.interceptor.ts`    |
 | `APP_INTERCEPTOR` | `TransformInterceptor`     | `shared/interceptor/transform.interceptor.ts`  |
-| `APP_INTERCEPTOR` | `IdempotencyInterceptor`   | `shared/interceptor/idempotent.interceptor.ts` |
 | `APP_INTERCEPTOR` | `ZodSerializerInterceptor` | từ `nestjs-zod`                                |
 
 Middleware: `RequestIdMiddleware` áp dụng `forRoutes('*')` (X-Request-ID propagation).
@@ -187,7 +186,6 @@ Global modules: `SharedModule` (`@Global`) exports `HashingService`, `TokenServi
 - **Interceptors**
   - `TransformInterceptor`: chuẩn hóa response (xem phần Response shape).
   - `LoggingInterceptor`: log `Before... / After... <ms>` ra console.
-  - `IdempotencyInterceptor`: **gần như vô hiệu** — không decorator nào set metadata `envConfig.IDEMPOTENCY_KEY`; idempotency thực sự nằm trong `PurchaseOrderService` dùng `IdempotencyService` trực tiếp.
 - **Filter**: `HttpExceptionFilter` (xem Error shape).
 - **Pipe**: `CustomZodValidationPipe` (422).
 - **Middleware**: `RequestIdMiddleware` (X-Request-ID).
@@ -238,7 +236,6 @@ Lưu ý discrepancies:
 3. `@Permissions` là **OR**; `*.manage` ngụ ý toàn bộ CRUD của module đó.
 4. `AuthGuard` phải chạy trước `PermissionGuard`; nó populate `request['user']` + `request['role_permissions']` cho `@ActiveUser()` và `PermissionGuard`.
 5. `RequestContextModule`/`RequestContextService` là dead code — chưa wire.
-6. `IdempotencyInterceptor` gần như vô hiệu; idempotency thực nằm ở service layer (`PurchaseOrderService`).
 7. Config validation nghiêm ngặt — thiếu/invalid env (gồm `IDEMPOTENCY_KEY`) → `process.exit(1)`.
 8. Mọi message/exception/summary hướng người dùng viết bằng tiếng Việt.
 9. `Customer.entity.ts` / `Role.entity.ts` khai `id: string` nhưng dùng `@PrimaryGeneratedColumn('increment')` (lẽ ra là `number`) — quirk, đừng nhân rộng.

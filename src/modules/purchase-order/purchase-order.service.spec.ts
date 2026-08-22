@@ -7,7 +7,12 @@ import { PurchaseOrderItem } from '../purchase-order-item/purchase-order-item.en
 import { Supplier } from '../supplier/supplier.entity';
 import { SupplierStatus } from 'src/shared/constant/supplier.constant';
 import { IdempotencyService } from 'src/shared/services/idempotency.service';
-
+import { Logger } from 'nestjs-pino';
+const logger = {
+  warn: jest.fn(),
+  error: jest.fn(),
+  log: jest.fn(),
+};
 describe('PurchaseOrderService', () => {
   const supplierId = 1;
   const idempotencyKey = 'test-idempotency-key';
@@ -146,6 +151,7 @@ describe('PurchaseOrderService', () => {
 
       const service = new PurchaseOrderService(
         dataSource as unknown as DataSource,
+        logger as unknown as Logger,
         idempotencyService as unknown as IdempotencyService,
       );
 
@@ -242,6 +248,7 @@ describe('PurchaseOrderService', () => {
 
       const service = new PurchaseOrderService(
         dataSource as unknown as DataSource,
+        logger as unknown as Logger,
         idempotencyService as unknown as IdempotencyService,
       );
 
@@ -272,6 +279,7 @@ describe('PurchaseOrderService', () => {
 
       const service = new PurchaseOrderService(
         dataSource as unknown as DataSource,
+        logger as unknown as Logger,
         idempotencyService as unknown as IdempotencyService,
       );
 
@@ -310,6 +318,7 @@ describe('PurchaseOrderService', () => {
 
       const service = new PurchaseOrderService(
         dataSource as unknown as DataSource,
+        logger as unknown as Logger,
         idempotencyService as unknown as IdempotencyService,
       );
 

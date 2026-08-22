@@ -15,7 +15,12 @@ import type { PaginatedResult } from '../../shared/repositories/base.repository'
 
 import { User } from './user.entity';
 import { UsersService } from './users.service';
-import { CreateUserBodyDTO, UpdateUserBodyDTO } from './user.dto';
+import {
+  CreateUserBodyDTO,
+  UpdateUserBodyDTO,
+  UserDetailDTO,
+  UserPublicDTO,
+} from './user.dto';
 import { GetUsersQuerySchema, type GetUsersQueryType } from './user.model';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
@@ -49,6 +54,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
+  @ZodSerializerDto(UserPublicDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_CREATE])
   @ApiOperation({ summary: 'Tạo người dùng mới' })
   @ApiBody({ type: CreateUserBodyDTO })
@@ -98,6 +104,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @ZodSerializerDto(UserDetailDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_READ])
   @ApiOperation({ summary: 'Lấy thông tin chi tiết người dùng' })
   @ApiParam({
@@ -121,6 +128,7 @@ export class UsersController {
   }
 
   @Put(':id')
+  @ZodSerializerDto(UserPublicDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_UPDATE])
   @ApiOperation({ summary: 'Cập nhật thông tin người dùng' })
   @ApiBody({ type: UpdateUserBodyDTO })

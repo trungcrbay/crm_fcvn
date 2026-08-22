@@ -13,7 +13,7 @@ graph TB
     subgraph "NestJS 11 API - port 3000"
         MW[RequestIdMiddleware]
         Guard[AuthGuard global<br/>PermissionGuard per-controller]
-        Interceptor[LoggingInterceptor<br/>TransformInterceptor<br/>IdempotencyInterceptor<br/>ZodSerializerInterceptor]
+        Interceptor[LoggingInterceptor<br/>TransformInterceptor<br/>ZodSerializerInterceptor]
         Pipe[CustomZodValidationPipe]
         Filter[HttpExceptionFilter]
         Controller[Controllers]
@@ -108,7 +108,6 @@ Global providers đăng ký trong `src/app.module.ts`:
 | `APP_FILTER`      | `HttpExceptionFilter`      | Format lỗi JSON thống nhất            |
 | `APP_INTERCEPTOR` | `LoggingInterceptor`       | Log `Before/After ... ms`             |
 | `APP_INTERCEPTOR` | `TransformInterceptor`     | Bọc response `{ data, statusCode }`   |
-| `APP_INTERCEPTOR` | `IdempotencyInterceptor`   | Gần như vô hiệu (xem mục Idempotency) |
 | `APP_INTERCEPTOR` | `ZodSerializerInterceptor` | Serialize response theo Zod schema    |
 
 Middleware: `RequestIdMiddleware` áp dụng `forRoutes('*')` — đảm bảo mọi request có `X-Request-ID` (đọc từ header hoặc sinh `randomUUID`, set lại vào response header).
@@ -274,7 +273,6 @@ graph LR
 
 ## Idempotency
 
-- `IdempotencyInterceptor` (global) **gần như vô hiệu** — không decorator nào set metadata `envConfig.IDEMPOTENCY_KEY`, nên `reflector.get` luôn trả `undefined`.
 - Idempotency thực nằm ở **service layer**: `PurchaseOrderService.purchaseOrder(dto, idempotencyKey)` gọi `IdempotencyService` trực tiếp:
   - Client gửi header `idempotency-key` khi tạo PO.
   - `IdempotencyService` (Redis): response cache TTL **24h**, lock TTL **30s**, wait timeout **10s** (poll 200ms).

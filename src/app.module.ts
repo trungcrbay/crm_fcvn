@@ -19,9 +19,8 @@ import { RefreshTokenModule } from './modules/refresh-token/refresh-token.module
 import { ProfileModule } from './modules/profile/profile.module';
 import { LoggerModule } from 'nestjs-pino';
 import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware';
-import { SupplierModule } from './modules/supplier/supplier.module';
+import { SupplierModule } from './modules/supplier/suppliers.module';
 import { SupplierGroupModule } from './modules/supplier-group/supplier-group.module';
-import { IdempotencyInterceptor } from './shared/interceptor/idempotent.interceptor';
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-order-item.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -77,10 +76,6 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
       useClass: HttpExceptionFilter,
     },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: IdempotencyInterceptor,
-    },
     {
       provide: APP_INTERCEPTOR,
       useClass: ZodSerializerInterceptor,

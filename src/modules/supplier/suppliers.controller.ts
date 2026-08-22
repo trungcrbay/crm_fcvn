@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { SupplierService } from './supplier.service';
+import { SupplierService } from './suppliers.service';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
