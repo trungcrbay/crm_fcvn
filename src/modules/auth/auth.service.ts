@@ -15,6 +15,7 @@ import { AcessTokenPayloadCreate } from 'src/shared/types/jwt.type';
 import { TokenService } from 'src/shared/services/token.service';
 import { UserStatus } from 'src/shared/constant/user.constant';
 import { isUniqueConstraintError } from 'src/shared/helpers';
+import { hashToken } from 'src/shared/utils';
 
 @Injectable()
 export class AuthService {
@@ -36,7 +37,7 @@ export class AuthService {
     const decodedRefreshToken =
       await this.tokenService.verifyRefreshToken(refreshToken);
     await this.authRepository.createRefreshToken({
-      token: refreshToken,
+      token: hashToken(refreshToken),
       userId: userId,
       expiresAt: new Date(decodedRefreshToken.exp * 1000),
     });
@@ -76,9 +77,11 @@ export class AuthService {
       const { userId } =
         await this.tokenService.verifyRefreshToken(refreshToken);
 
+      const hashedToken = hashToken(refreshToken);
+
       const refreshTokenInDb =
         await this.authRepository.findUniqueRefreshTokenIncludeUserRole({
-          token: refreshToken,
+          token: hashedToken,
         });
 
       if (!refreshTokenInDb) {
@@ -96,7 +99,7 @@ export class AuthService {
       }
 
       const $deleteRefreshToken = this.authRepository.deleteRefreshToken({
-        token: refreshToken,
+        token: hashedToken,
       });
       const $tokens = this.generateTokens({
         userId,
@@ -115,17 +118,14 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     try {
-      // 1. Kiểm tra refreshToken có hợp lệ không
       await this.tokenService.verifyRefreshToken(refreshToken);
-      // 2. Xóa refreshToken trong database
+      const hashedToken = hashToken(refreshToken);
       await this.authRepository.deleteRefreshToken({
-        token: refreshToken,
+        token: hashedToken,
       });
 
       return { message: 'Đăng xuất thành công' };
     } catch (error) {
-      // Trường hợp đã refresh token rồi, hãy thông báo cho user biết
-      // refresh token của họ đã bị đánh cắp
       if (isUniqueConstraintError(error)) {
         throw new UnauthorizedException('Refresh Token đã được sử dụng');
       }

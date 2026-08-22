@@ -509,10 +509,9 @@ import { createZodDto, ZodSerializerDto } from 'nestjs-zod';
 3. `@Permissions` là **OR**; `*.manage` ngụ ý toàn bộ CRUD module đó.
 4. `AuthGuard` chạy trước `PermissionGuard`, populate `request['user']` + `request['role_permissions']`.
 5. `RequestContextModule`/`RequestContextService` là dead code — đừng dùng.
-7. Config env nghiêm ngặt — thiếu/invalid (gồm `IDEMPOTENCY_KEY`) → `process.exit(1)`.
-8. Mọi message/exception/summary hướng người dùng viết bằng **tiếng Việt**.
-9. `Customer`/`Role` khai `id: string` với `@PrimaryGeneratedColumn('increment')` — quirk, đừng nhân rộng (nên dùng `number`).
-10. `typeorm` trong `package.json` ghi `"^1.1.0"` (bất thường — thực tế 0.3.x).
+6. Config env nghiêm ngặt — thiếu/invalid (gồm `IDEMPOTENCY_KEY`) → `process.exit(1)`.
+7. Mọi message/exception/summary hướng người dùng viết bằng **tiếng Việt**.
+8. `Customer`/`Role` khai `id: string` với `@PrimaryGeneratedColumn('increment')` — quirk, đừng nhân rộng (nên dùng `number`).
 
 ---
 

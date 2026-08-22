@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export const generateUserCode = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -21,4 +23,8 @@ export function generatePurchaseCode(): string {
   const randomPart = Math.floor(100000 + Math.random() * 900000).toString();
 
   return `PO-${datePart}${randomPart}`;
+}
+
+export function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }

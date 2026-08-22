@@ -22,7 +22,7 @@ graph TB
     end
 
     subgraph "Hạ tầng"
-        PG[(PostgreSQL<br/>TypeORM 0.3.x)]
+        PG[(PostgreSQL<br/>TypeORM 1.1.0)]
         Redis[(Redis<br/>Cache + Idempotency)]
     end
 
@@ -101,14 +101,14 @@ src/
 
 Global providers đăng ký trong `src/app.module.ts`:
 
-| Token             | Class                      | Vai trò                               |
-| ----------------- | -------------------------- | ------------------------------------- |
-| `APP_PIPE`        | `CustomZodValidationPipe`  | Validate DTO bằng Zod → lỗi **422**   |
-| `APP_GUARD`       | `AuthGuard`                | Xác thực JWT Bearer toàn cục          |
-| `APP_FILTER`      | `HttpExceptionFilter`      | Format lỗi JSON thống nhất            |
-| `APP_INTERCEPTOR` | `LoggingInterceptor`       | Log `Before/After ... ms`             |
-| `APP_INTERCEPTOR` | `TransformInterceptor`     | Bọc response `{ data, statusCode }`   |
-| `APP_INTERCEPTOR` | `ZodSerializerInterceptor` | Serialize response theo Zod schema    |
+| Token             | Class                      | Vai trò                             |
+| ----------------- | -------------------------- | ----------------------------------- |
+| `APP_PIPE`        | `CustomZodValidationPipe`  | Validate DTO bằng Zod → lỗi **422** |
+| `APP_GUARD`       | `AuthGuard`                | Xác thực JWT Bearer toàn cục        |
+| `APP_FILTER`      | `HttpExceptionFilter`      | Format lỗi JSON thống nhất          |
+| `APP_INTERCEPTOR` | `LoggingInterceptor`       | Log `Before/After ... ms`           |
+| `APP_INTERCEPTOR` | `TransformInterceptor`     | Bọc response `{ data, statusCode }` |
+| `APP_INTERCEPTOR` | `ZodSerializerInterceptor` | Serialize response theo Zod schema  |
 
 Middleware: `RequestIdMiddleware` áp dụng `forRoutes('*')` — đảm bảo mọi request có `X-Request-ID` (đọc từ header hoặc sinh `randomUUID`, set lại vào response header).
 

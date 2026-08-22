@@ -59,14 +59,14 @@ initScript/                # seed scripts (create-role, create-user, create-cust
 
 Global wiring trong `src/app.module.ts`:
 
-| Token             | Class                      | File                                           |
-| ----------------- | -------------------------- | ---------------------------------------------- |
-| `APP_PIPE`        | `CustomZodValidationPipe`  | `shared/pipe/custom-zod-validation.pipe.ts`    |
-| `APP_GUARD`       | `AuthGuard`                | `shared/guard/auth.guard.ts`                   |
-| `APP_FILTER`      | `HttpExceptionFilter`      | `shared/filter/http-exception.filter.ts`       |
-| `APP_INTERCEPTOR` | `LoggingInterceptor`       | `shared/interceptor/logging.interceptor.ts`    |
-| `APP_INTERCEPTOR` | `TransformInterceptor`     | `shared/interceptor/transform.interceptor.ts`  |
-| `APP_INTERCEPTOR` | `ZodSerializerInterceptor` | từ `nestjs-zod`                                |
+| Token             | Class                      | File                                          |
+| ----------------- | -------------------------- | --------------------------------------------- |
+| `APP_PIPE`        | `CustomZodValidationPipe`  | `shared/pipe/custom-zod-validation.pipe.ts`   |
+| `APP_GUARD`       | `AuthGuard`                | `shared/guard/auth.guard.ts`                  |
+| `APP_FILTER`      | `HttpExceptionFilter`      | `shared/filter/http-exception.filter.ts`      |
+| `APP_INTERCEPTOR` | `LoggingInterceptor`       | `shared/interceptor/logging.interceptor.ts`   |
+| `APP_INTERCEPTOR` | `TransformInterceptor`     | `shared/interceptor/transform.interceptor.ts` |
+| `APP_INTERCEPTOR` | `ZodSerializerInterceptor` | từ `nestjs-zod`                               |
 
 Middleware: `RequestIdMiddleware` áp dụng `forRoutes('*')` (X-Request-ID propagation).
 
@@ -235,11 +235,6 @@ Lưu ý discrepancies:
 2. `BaseRepository.findAll` đổi return type theo options (array vs `{ data, meta }`).
 3. `@Permissions` là **OR**; `*.manage` ngụ ý toàn bộ CRUD của module đó.
 4. `AuthGuard` phải chạy trước `PermissionGuard`; nó populate `request['user']` + `request['role_permissions']` cho `@ActiveUser()` và `PermissionGuard`.
-5. `RequestContextModule`/`RequestContextService` là dead code — chưa wire.
-7. Config validation nghiêm ngặt — thiếu/invalid env (gồm `IDEMPOTENCY_KEY`) → `process.exit(1)`.
-8. Mọi message/exception/summary hướng người dùng viết bằng tiếng Việt.
-9. `Customer.entity.ts` / `Role.entity.ts` khai `id: string` nhưng dùng `@PrimaryGeneratedColumn('increment')` (lẽ ra là `number`) — quirk, đừng nhân rộng.
-10. `typeorm` trong `package.json` là `"^1.1.0"` (bất thường — TypeORM thực tế là 0.3.x).
 
 ## Related Docs (link, không duplicate)
 
