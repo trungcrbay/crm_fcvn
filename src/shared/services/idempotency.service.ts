@@ -30,17 +30,11 @@ export class IdempotencyService {
   }
 
   async acquireLock(key: string): Promise<boolean> {
-    const lockKey = this.lockKey(key);
-
-    const existing = await this.cacheService.get<boolean>(lockKey);
-
-    if (existing) {
-      return false;
-    }
-
-    await this.cacheService.set(lockKey, true, this.lockTtl);
-
-    return true;
+    return this.cacheService.setIfNotExists(
+      this.lockKey(key),
+      '1',
+      this.lockTtl,
+    );
   }
 
   async waitForResponse<T>(key: string): Promise<T | undefined> {
