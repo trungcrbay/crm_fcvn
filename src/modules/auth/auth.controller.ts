@@ -18,12 +18,14 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 @ApiTags('Auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Public()
   @Post('login')
   @ZodSerializerDto(LoginResDTO)
@@ -52,6 +54,7 @@ export class AuthController {
     return this.authService.login({ ...body });
   }
 
+  @Public()
   @Post('refresh-token')
   @ZodSerializerDto(LoginResDTO)
   @ApiOperation({
@@ -74,6 +77,7 @@ export class AuthController {
     return this.authService.refreshToken({ ...body });
   }
 
+  @Public()
   @Post('logout')
   @ZodSerializerDto(MessageResDTO)
   @ApiOperation({

@@ -13,6 +13,9 @@ import { SupplierStatus } from 'src/shared/constant/supplier.constant';
 import { IdempotencyService } from 'src/shared/services/idempotency.service';
 import { CreatePurchaseOrderBodyDTO } from './purchase-order.dto';
 import { generatePurchaseCode } from 'src/shared/utils';
+import { GetPurchaseOrdersQueryType } from './purchase-order.model';
+import { PaginatedResult } from 'src/shared/repositories/base.repository';
+import { Like } from 'typeorm';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -50,6 +53,53 @@ export class PurchaseOrderService {
       String(driverError?.code) === '1062' ||
       String(driverError?.errno) === '1062'
     );
+  }
+
+  async findAll(
+    query: GetPurchaseOrdersQueryType = {
+      page: 1,
+      limit: 10,
+      sortOrder: 'ASC',
+    },
+  ): Promise<PaginatedResult<PurchaseOrder>> {
+    const page = Number(query.page ?? 1);
+    const limit = Number(query.limit ?? 10);
+    const safePage = page > 0 ? page : 1;
+    const safeLimit = limit > 0 ? limit : 10;
+    const skip = (safePage - 1) * safeLimit;
+    const where: Record<string, unknown> = {};
+
+    if (query.code) {
+      where.code = Like(`%${query.code.trim()}%`);
+    }
+
+    if (query.supplierId) {
+      where.supplierId = query.supplierId;
+    }
+
+    const [data, total] = await this.dataSource
+      .getRepository(PurchaseOrder)
+      .findAndCount({
+        where,
+        relations: {
+          items: true,
+        },
+        skip,
+        take: safeLimit,
+        order: {
+          createdAt: query.sortOrder,
+        },
+      });
+
+    return {
+      data,
+      meta: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit) || 1,
+      },
+    };
   }
 
   async purchaseOrder(

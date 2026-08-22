@@ -24,11 +24,22 @@ import { SupplierGroupModule } from './modules/supplier-group/supplier-group.mod
 import { IdempotencyInterceptor } from './shared/interceptor/idempotent.interceptor';
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-order-item.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60000,
+          limit: 5,
+        },
+      ],
+    }),
+
     DatabaseModule,
     UsersModule,
     RolesModule,
@@ -51,6 +62,10 @@ import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
     AppService,
     {

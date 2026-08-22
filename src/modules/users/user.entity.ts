@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -10,6 +11,7 @@ import { BaseEntity } from '../../shared/entities/base.entity';
 import { Role } from '../roles/role.entity';
 
 @Entity('users')
+@Index(['roleId'])
 export class User extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -20,7 +22,7 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, select: false })
   password: string;
 
   @Column({ type: 'int', nullable: true })

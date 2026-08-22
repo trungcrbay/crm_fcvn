@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -13,6 +14,7 @@ import { Supplier } from 'src/modules/supplier/supplier.entity';
 import { PurchaseOrderItem } from '../purchase-order-item/purchase-order-item.entity';
 
 @Entity('purchase_orders')
+@Index(['supplierId'])
 export class PurchaseOrder extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;

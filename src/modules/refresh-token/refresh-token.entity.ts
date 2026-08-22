@@ -11,6 +11,7 @@ import {
 
 @Entity('refresh_tokens')
 @Index(['expiresAt'])
+@Index(['userId'])
 export class RefreshToken extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;

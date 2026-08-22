@@ -7,10 +7,11 @@ import { SuppliersRepository } from './supplier.repository';
 import { CreateSupplierBodyDTO, UpdateSupplierBodyDTO } from './supplier.dto';
 import { isUniqueConstraintError } from 'src/shared/helpers';
 import { Supplier } from './supplier.entity';
-import { PaginationQueryType } from 'src/shared/model/request.model';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { QueryOptions } from 'src/shared/model/query.model';
 import { SupplierStatus } from 'src/shared/constant/supplier.constant';
+import { Like } from 'typeorm';
+import { GetSuppliersQueryType } from './supplier.model';
 
 @Injectable()
 export class SupplierService {
@@ -42,50 +43,77 @@ export class SupplierService {
   }
 
   async findAll(
-    query: PaginationQueryType = { page: 1, limit: 10 },
+    query: GetSuppliersQueryType = { page: 1, limit: 10, sortOrder: 'ASC' },
   ): Promise<Supplier[] | PaginatedResult<Supplier>> {
+    const where: QueryOptions<Supplier>['where'] = {
+      status: query.status ?? SupplierStatus.ACTIVE,
+    };
+
+    if (query.supplierCode) {
+      where.supplierCode = Like(`%${query.supplierCode.trim()}%`);
+    }
+
+    if (query.name) {
+      where.name = Like(`%${query.name.trim()}%`);
+    }
+
+    if (query.email) {
+      where.email = Like(`%${query.email.trim().toLowerCase()}%`);
+    }
+
+    if (query.supplierGroupId) {
+      where.supplierGroupId = query.supplierGroupId;
+    }
+
     const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
-      search: query.search,
+      search: query.name ? undefined : query.search,
       sortOrder: query.sortOrder,
-      where: {
-        status: SupplierStatus.ACTIVE,
-      },
+      where,
     };
 
     return this.supplierRepository.findAll(options);
   }
 
-  async findOne(id: string): Promise<Supplier | null> {
-    return this.supplierRepository.findOne(id);
+  async findOne(id: number): Promise<Supplier> {
+    const supplier = await this.supplierRepository.findOne(id);
+
+    if (!supplier) {
+      throw new NotFoundException('Không tìm thấy nhà cung cấp');
+    }
+
+    return supplier;
   }
 
   async update(
-    id: string,
+    id: number,
     updateSupplierDto: UpdateSupplierBodyDTO,
     userId: number,
-  ): Promise<Supplier | null> {
+  ): Promise<Supplier> {
     const updatedBy = userId;
-    return this.supplierRepository.update(id, {
+    const supplier = await this.supplierRepository.update(id, {
       ...updateSupplierDto,
       updatedById: updatedBy,
     });
+
+    if (!supplier) {
+      throw new NotFoundException('Không tìm thấy nhà cung cấp');
+    }
+
+    return supplier;
   }
 
-  async remove(id: string, userId: number) {
+  async remove(id: number, userId: number) {
+    await this.findOne(id);
     await this.supplierRepository.remove(id, userId);
     return {
       message: 'Xóa nhà cung cấp thành công',
     };
   }
 
-  async deactivate(id: string, userId: number) {
-    const supplier = await this.supplierRepository.findOne(id);
-
-    if (!supplier) {
-      throw new NotFoundException('Không tìm thấy nhà cung cấp');
-    }
+  async deactivate(id: number, userId: number) {
+    await this.findOne(id);
 
     return this.supplierRepository.update(id, {
       status: SupplierStatus.INACTIVE,

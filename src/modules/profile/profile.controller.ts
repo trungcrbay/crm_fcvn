@@ -4,7 +4,9 @@ import { ZodSerializerDto } from 'nestjs-zod';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { GetUserProfileResDTO } from './profile.dto';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 
+@SkipThrottle()
 @Controller('profile')
 @ApiTags('Profile')
 @ApiBearerAuth()

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Delete,
   Post,
   Body,
@@ -33,14 +34,21 @@ import {
   GetSupplierGroupsResDTO,
   UpdateSupplierGroupBodyDTO,
 } from './supplier-group.dto';
+import {
+  GetSupplierGroupsQuerySchema,
+  type GetSupplierGroupsQueryType,
+} from './supplier-group.model';
 import { SupplierGroup } from './supplier-group.entity';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
-import { PaginationQuerySchema } from 'src/shared/model/request.model';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
-@Controller('supplier-group')
+import { SkipThrottle } from '@nestjs/throttler';
+import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
+
+@SkipThrottle()
+@Controller('supplier-groups')
 @ApiTags('Supplier Group')
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
@@ -81,6 +89,9 @@ export class SupplierGroupController {
   @ZodSerializerDto(GetSupplierGroupsResDTO)
   @ApiOperation({ summary: 'Lấy danh sách nhóm nhà cung cấp' })
   @ApiQuery(PaginationQueryDTO)
+  @ApiQuery({ name: 'code', required: false, type: String })
+  @ApiQuery({ name: 'name', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, enum: SupplierGroupStatus })
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách nhóm nhà cung cấp thành công.',
@@ -91,8 +102,8 @@ export class SupplierGroupController {
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
   findAll(
-    @Query(new ZodValidationPipe(PaginationQuerySchema))
-    query: PaginationQueryDTO,
+    @Query(new ZodValidationPipe(GetSupplierGroupsQuerySchema))
+    query: GetSupplierGroupsQueryType,
   ): Promise<SupplierGroup[] | PaginatedResult<SupplierGroup>> {
     return this.supplierGroupService.findAll(query);
   }
@@ -114,7 +125,9 @@ export class SupplierGroupController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id') id: string): Promise<SupplierGroup | null> {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<SupplierGroup | null> {
     return this.supplierGroupService.findOne(id);
   }
 
@@ -137,7 +150,7 @@ export class SupplierGroupController {
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateSupplierGroupDto: UpdateSupplierGroupBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<SupplierGroup | null> {
@@ -163,7 +176,7 @@ export class SupplierGroupController {
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
   changeStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() changeStatusDto: ChangeStatusSupplierGroupBodyDTO,
     @ActiveUser('userId') userId: number,
   ) {
@@ -189,7 +202,10 @@ export class SupplierGroupController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
-  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('userId') userId: number,
+  ) {
     return this.supplierGroupService.remove(id, userId);
   }
 }

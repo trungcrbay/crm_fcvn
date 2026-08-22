@@ -1,11 +1,16 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PaginatedResult } from '../../shared/repositories/base.repository';
-import { PaginationQueryType } from '../../shared/model/request.model';
 import { CustomersRepository } from './customers.repository';
 import { Customer } from './customer.entity';
 import { CreateCustomerBodyDTO, UpdateCustomerBodyDTO } from './customer.dto';
 import { QueryOptions } from 'src/shared/model/query.model';
 import { isUniqueConstraintError } from 'src/shared/helpers';
+import { Like } from 'typeorm';
+import { GetCustomerQueryType } from './customer.model';
 
 @Injectable()
 export class CustomersService {
@@ -38,35 +43,59 @@ export class CustomersService {
   }
 
   async findAll(
-    query: PaginationQueryType = { page: 1, limit: 10 },
+    query: GetCustomerQueryType = { page: 1, limit: 10, sortOrder: 'ASC' },
   ): Promise<Customer[] | PaginatedResult<Customer>> {
+    const where: QueryOptions<Customer>['where'] = {};
+
+    if (query.name) {
+      where.name = Like(`%${query.name.trim()}%`);
+    }
+
+    if (query.email) {
+      where.email = Like(`%${query.email.trim().toLowerCase()}%`);
+    }
+
     const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
-      search: query.search,
+      search: query.name ? undefined : query.search,
       sortOrder: query.sortOrder,
+      where,
     };
 
     return this.customersRepository.findAll(options);
   }
 
-  async findOne(id: string): Promise<Customer | null> {
-    return this.customersRepository.findOne(id);
+  async findOne(id: number): Promise<Customer> {
+    const customer = await this.customersRepository.findOne(id);
+
+    if (!customer) {
+      throw new NotFoundException('Không tìm thấy khách hàng');
+    }
+
+    return customer;
   }
 
   async update(
-    id: string,
+    id: number,
     updateCustomerDto: UpdateCustomerBodyDTO,
     userId: number,
-  ): Promise<Customer | null> {
+  ): Promise<Customer> {
     const updatedBy = userId;
-    return this.customersRepository.update(id, {
+    const customer = await this.customersRepository.update(id, {
       ...updateCustomerDto,
       updatedById: updatedBy,
     });
+
+    if (!customer) {
+      throw new NotFoundException('Không tìm thấy khách hàng');
+    }
+
+    return customer;
   }
 
-  async remove(id: string, userId: number) {
+  async remove(id: number, userId: number) {
+    await this.findOne(id);
     await this.customersRepository.remove(id, userId);
     return {
       message: 'Xóa khách hàng thành công',

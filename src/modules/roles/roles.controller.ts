@@ -4,14 +4,21 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
 import { Role } from './role.entity';
 import { RolesService } from './roles.service';
-import { CreateRoleBodyDTO, UpdateRoleBodyDTO } from './role.dto';
+import {
+  CreateRoleBodyDTO,
+  GetRolesResDTO,
+  UpdateRoleBodyDTO,
+} from './role.dto';
+import { GetRolesQuerySchema, type GetRoleQueryType } from './role.model';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permission } from 'src/shared/constant/permission.constant';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
@@ -23,13 +30,18 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
-import { ZodSerializerDto } from 'nestjs-zod';
+import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
+import { SkipThrottle } from '@nestjs/throttler';
+import { PaginatedResult } from 'src/shared/repositories/base.repository';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 
+@SkipThrottle()
 @Controller('roles')
 @ApiTags('Roles')
 @UseGuards(PermissionGuard)
@@ -59,6 +71,7 @@ export class RolesController {
 
   @Get()
   @Permissions([Permission.PERMISSION_MANAGE, Permission.PERMISSION_READ])
+  @ZodSerializerDto(GetRolesResDTO)
   @ApiOperation({ summary: 'Lấy danh sách vai trò' })
   @ApiResponse({
     status: 200,
@@ -69,8 +82,13 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findAll(): Promise<Role[] | { data: Role[]; meta: any }> {
-    return this.rolesService.findAll();
+  @ApiPaginationQuery()
+  @ApiQuery({ name: 'name', required: false, type: String })
+  findAll(
+    @Query(new ZodValidationPipe(GetRolesQuerySchema))
+    query: GetRoleQueryType,
+  ): Promise<Role[] | PaginatedResult<Role>> {
+    return this.rolesService.findAll(query);
   }
 
   @Get(':id')
@@ -92,7 +110,7 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id') id: string): Promise<Role | null> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Role | null> {
     return this.rolesService.findOne(id);
   }
 
@@ -120,7 +138,7 @@ export class RolesController {
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateRoleDto: UpdateRoleBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<Role | null> {
@@ -146,7 +164,10 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('userId') userId: number,
+  ) {
     return this.rolesService.remove(id, userId);
   }
 }

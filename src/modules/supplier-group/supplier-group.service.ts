@@ -12,10 +12,11 @@ import {
 import { SupplierGroup } from './supplier-group.entity';
 import { isUniqueConstraintError } from 'src/shared/helpers';
 import { QueryOptions } from 'src/shared/model/query.model';
-import { PaginationQueryType } from 'src/shared/model/request.model';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
 import { SuppliersRepository } from '../supplier/supplier.repository';
+import { Like } from 'typeorm';
+import { GetSupplierGroupsQueryType } from './supplier-group.model';
 
 @Injectable()
 export class SupplierGroupService {
@@ -49,49 +50,82 @@ export class SupplierGroupService {
   }
 
   async findAll(
-    query: PaginationQueryType = { page: 1, limit: 10 },
+    query: GetSupplierGroupsQueryType = {
+      page: 1,
+      limit: 10,
+      sortOrder: 'ASC',
+    },
   ): Promise<SupplierGroup[] | PaginatedResult<SupplierGroup>> {
+    const where: QueryOptions<SupplierGroup>['where'] = {
+      status: query.status ?? SupplierGroupStatus.ACTIVE,
+    };
+
+    if (query.code) {
+      where.code = Like(`%${query.code.trim()}%`);
+    }
+
+    if (query.name) {
+      where.name = Like(`%${query.name.trim()}%`);
+    }
+
     const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
-      search: query.search,
+      search: query.name ? undefined : query.search,
       sortOrder: query.sortOrder,
-      relations: {
-        suppliers: true,
-      },
-      where: {
-        status: SupplierGroupStatus.ACTIVE,
-      },
+      where,
     };
 
     return this.supplierGroupRepository.findAll(options);
   }
 
-  async findOne(id: string): Promise<SupplierGroup | null> {
-    return this.supplierGroupRepository.findOne(id);
+  async findOne(id: number): Promise<SupplierGroup> {
+    const supplierGroup = await this.supplierGroupRepository.findOne(id);
+
+    if (!supplierGroup) {
+      throw new NotFoundException('Không tìm thấy nhóm nhà cung cấp');
+    }
+
+    return supplierGroup;
   }
 
   async update(
-    id: string,
+    id: number,
     updateSupplierDto: UpdateSupplierGroupBodyDTO,
     userId: number,
-  ): Promise<SupplierGroup | null> {
+  ): Promise<SupplierGroup> {
     const updatedBy = userId;
-    return this.supplierGroupRepository.update(id, {
+    const supplierGroup = await this.supplierGroupRepository.update(id, {
       ...updateSupplierDto,
       updatedById: updatedBy,
     });
+
+    if (!supplierGroup) {
+      throw new NotFoundException('Không tìm thấy nhóm nhà cung cấp');
+    }
+
+    return supplierGroup;
   }
 
-  async remove(id: string, userId: number) {
+  async remove(id: number, userId: number) {
+    await this.findOne(id);
     await this.supplierGroupRepository.remove(id, userId);
     return {
       message: 'Xóa nhóm nhà cung cấp thành công',
     };
   }
 
-  async changeStatus(id: string, status: SupplierGroupStatus, userId: number) {
-    await this.supplierGroupRepository.changeStatus(id, status, userId);
+  async changeStatus(id: number, status: SupplierGroupStatus, userId: number) {
+    const supplierGroup = await this.supplierGroupRepository.changeStatus(
+      id,
+      status,
+      userId,
+    );
+
+    if (!supplierGroup) {
+      throw new NotFoundException('Không tìm thấy nhóm nhà cung cấp');
+    }
+
     return {
       message: 'Cập nhật trạng thái nhóm nhà cung cấp thành công',
     };

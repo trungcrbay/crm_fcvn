@@ -21,7 +21,6 @@ export const GetCustomersResSchema = z.object({
 export const GetCustomersQuerySchema = SharedQuerySchema.extend({
   name: z.string().optional(),
   email: z.string().optional(),
-  roleId: z.coerce.number().int().positive().optional(),
 });
 
 export const CreateCustomerBodySchema = z
