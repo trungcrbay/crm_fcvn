@@ -4,7 +4,7 @@ import { BaseEntity } from '../../shared/entities/base.entity';
 @Entity('customers')
 export class Customer extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
-  id: string;
+  id: number;
 
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 50, unique: true })

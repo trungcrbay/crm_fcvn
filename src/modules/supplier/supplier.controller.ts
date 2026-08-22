@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Delete,
   Post,
   Body,
@@ -20,6 +21,7 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -35,13 +37,18 @@ import {
   GetSuppliersResDTO,
   UpdateSupplierBodyDTO,
 } from './supplier.dto';
-import { PaginationQuerySchema } from 'src/shared/model/request.model';
+import {
+  GetSuppliersQuerySchema,
+  type GetSuppliersQueryType,
+} from './supplier.model';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
-import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
+import { SkipThrottle } from '@nestjs/throttler';
+import { SupplierStatus } from 'src/shared/constant/supplier.constant';
 
-@Controller('supplier')
+@SkipThrottle()
+@Controller('suppliers')
 @ApiTags('Supplier')
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
@@ -85,9 +92,14 @@ export class SupplierController {
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
   @ApiPaginationQuery()
+  @ApiQuery({ name: 'supplierCode', required: false, type: String })
+  @ApiQuery({ name: 'name', required: false, type: String })
+  @ApiQuery({ name: 'email', required: false, type: String })
+  @ApiQuery({ name: 'supplierGroupId', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, enum: SupplierStatus })
   findAll(
-    @Query(new ZodValidationPipe(PaginationQuerySchema))
-    query: PaginationQueryDTO,
+    @Query(new ZodValidationPipe(GetSuppliersQuerySchema))
+    query: GetSuppliersQueryType,
   ): Promise<Supplier[] | PaginatedResult<Supplier>> {
     return this.supplierService.findAll(query);
   }
@@ -106,7 +118,7 @@ export class SupplierController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id') id: string): Promise<Supplier | null> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Supplier | null> {
     return this.supplierService.findOne(id);
   }
 
@@ -126,7 +138,7 @@ export class SupplierController {
     description: 'Không tìm thấy nhà cung cấp.',
   })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateSupplierDto: UpdateSupplierBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<Supplier | null> {
@@ -149,7 +161,7 @@ export class SupplierController {
     description: 'Không tìm thấy nhà cung cấp.',
   })
   deactivate(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
   ): Promise<Supplier | null> {
     return this.supplierService.deactivate(id, userId);
@@ -167,7 +179,10 @@ export class SupplierController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhà cung cấp.',
   })
-  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('userId') userId: number,
+  ) {
     return this.supplierService.remove(id, userId);
   }
 }

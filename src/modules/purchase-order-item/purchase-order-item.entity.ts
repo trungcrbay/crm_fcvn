@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -10,6 +11,7 @@ import { BaseEntity } from 'src/shared/entities/base.entity';
 import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
 
 @Entity('purchase_order_items')
+@Index(['purchaseOrderId'])
 export class PurchaseOrderItem extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;

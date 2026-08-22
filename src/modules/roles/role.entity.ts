@@ -5,7 +5,7 @@ import { BaseEntity } from '../../shared/entities/base.entity';
 @Entity('roles')
 export class Role extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
-  id: string;
+  id: number;
 
   @Column({ type: 'varchar', length: 255, unique: true })
   name: string;
@@ -18,5 +18,4 @@ export class Role extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   description?: string;
-
 }

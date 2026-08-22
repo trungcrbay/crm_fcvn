@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -11,10 +12,6 @@ import {
 } from '@nestjs/common';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import type { PaginatedResult } from '../../shared/repositories/base.repository';
-import {
-  PaginationQuerySchema,
-  type PaginationQueryType,
-} from '../../shared/model/request.model';
 import { Customer } from './customer.entity';
 import { CustomersService } from './customers.service';
 import {
@@ -22,6 +19,10 @@ import {
   GetCustomersResDTO,
   UpdateCustomerBodyDTO,
 } from './customer.dto';
+import {
+  GetCustomersQuerySchema,
+  type GetCustomerQueryType,
+} from './customer.model';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
 import { Permission } from 'src/shared/constant/permission.constant';
@@ -35,13 +36,16 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
+import { SkipThrottle } from '@nestjs/throttler';
 
+@SkipThrottle()
 @Controller('customers')
 @ApiTags('Customers')
 @ApiBearerAuth()
@@ -86,9 +90,11 @@ export class CustomersController {
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
   @ApiPaginationQuery()
+  @ApiQuery({ name: 'name', required: false, type: String })
+  @ApiQuery({ name: 'email', required: false, type: String })
   findAll(
-    @Query(new ZodValidationPipe(PaginationQuerySchema))
-    query: PaginationQueryType,
+    @Query(new ZodValidationPipe(GetCustomersQuerySchema))
+    query: GetCustomerQueryType,
   ): Promise<Customer[] | PaginatedResult<Customer>> {
     return this.customersService.findAll(query);
   }
@@ -107,7 +113,7 @@ export class CustomersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id') id: string): Promise<Customer | null> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Customer | null> {
     return this.customersService.findOne(id);
   }
 
@@ -127,7 +133,7 @@ export class CustomersController {
     description: 'Không tìm thấy khách hàng.',
   })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCustomerDto: UpdateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<Customer | null> {
@@ -146,7 +152,10 @@ export class CustomersController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy khách hàng.',
   })
-  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('userId') userId: number,
+  ) {
     return this.customersService.remove(id, userId);
   }
 }

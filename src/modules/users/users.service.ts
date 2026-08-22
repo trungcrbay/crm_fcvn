@@ -1,12 +1,17 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PaginatedResult } from '../../shared/repositories/base.repository';
-import { PaginationQueryType } from '../../shared/model/request.model';
 import { UsersRepository } from './users.repository';
 import { User } from './user.entity';
 import { QueryOptions } from 'src/shared/model/query.model';
 import { CreateUserBodyDTO, UpdateUserBodyDTO } from './user.dto';
 import { isUniqueConstraintError } from 'src/shared/helpers';
 import { HashingService } from 'src/shared/services/hashing.service';
+import { Like } from 'typeorm';
+import { GetUsersQueryType } from './user.model';
 
 @Injectable()
 export class UsersService {
@@ -39,7 +44,11 @@ export class UsersService {
         payload.roleId = createUserDto.roleId;
       }
 
-      return await this.usersRepository.create(payload);
+      const createdUser = await this.usersRepository.create(payload);
+      const { password: _password, ...userWithoutPassword } = createdUser;
+      void _password;
+
+      return userWithoutPassword as User;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('Mã, email hoặc số điện thoại đã tồn tại');
@@ -50,27 +59,56 @@ export class UsersService {
   }
 
   async findAll(
-    query: PaginationQueryType = { page: 1, limit: 10 },
+    query: GetUsersQueryType = { page: 1, limit: 10, sortOrder: 'ASC' },
   ): Promise<User[] | PaginatedResult<User>> {
+    const where: QueryOptions<User>['where'] = {};
+
+    if (query.userCode) {
+      where.userCode = Like(`%${query.userCode.trim()}%`);
+    }
+
+    if (query.name) {
+      where.name = Like(`%${query.name.trim()}%`);
+    }
+
+    if (query.email) {
+      where.email = Like(`%${query.email.trim().toLowerCase()}%`);
+    }
+
+    if (query.roleId) {
+      where.roleId = query.roleId;
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
     const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
-      search: query.search,
+      search: query.name ? undefined : query.search,
       sortOrder: query.sortOrder,
+      where,
     };
 
     return this.usersRepository.findAll(options);
   }
 
-  async findOne(id: string): Promise<User | null> {
-    return this.usersRepository.findOne(id);
+  async findOne(id: number): Promise<User> {
+    const user = await this.usersRepository.findOne(id);
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    return user;
   }
 
   async update(
-    id: string,
+    id: number,
     updateUserDto: UpdateUserBodyDTO,
     userId: number,
-  ): Promise<User | null> {
+  ): Promise<User> {
     const payload: Partial<User> = {
       name: updateUserDto.name,
       userCode: updateUserDto.userCode,
@@ -85,10 +123,17 @@ export class UsersService {
       payload.roleId = updateUserDto.roleId;
     }
 
-    return this.usersRepository.update(id, payload);
+    const user = await this.usersRepository.update(id, payload);
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    return user;
   }
 
-  async remove(id: string, userId: number) {
+  async remove(id: number, userId: number) {
+    await this.findOne(id);
     await this.usersRepository.remove(id, userId);
     return {
       message: 'Xóa người dùng thành công',

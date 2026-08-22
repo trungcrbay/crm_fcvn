@@ -8,8 +8,8 @@ export const RoleSchema = z.object({
   name: z.string().min(1).max(255),
   permissions: z.array(z.nativeEnum(Permission)),
   description: z.string().max(500).nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
 });
 
 export const GetRolesResSchema = z.object({

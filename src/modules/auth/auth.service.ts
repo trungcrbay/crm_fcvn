@@ -51,15 +51,12 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('Tài khoản đã bị khóa');
-    }
-
     const isPasswordMatch = await this.hashingService.compare(
       body.password,
       user.password,
     );
-    if (!isPasswordMatch) {
+
+    if (!isPasswordMatch || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 

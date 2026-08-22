@@ -20,10 +20,12 @@ export class AuthRepository {
   }: {
     email: string;
   }): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { email: email.trim().toLowerCase() },
-      relations: { role: true },
-    });
+    return this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .leftJoinAndSelect('user.role', 'role')
+      .where('user.email = :email', { email: email.trim().toLowerCase() })
+      .getOne();
   }
 
   async createUser(
