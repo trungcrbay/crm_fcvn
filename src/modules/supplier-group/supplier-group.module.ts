@@ -4,7 +4,7 @@ import { SupplierGroupController } from './supplier-group.controller';
 import { SupplierGroupsRepository } from './supplier-group.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SupplierGroup } from './supplier-group.entity';
-import { SuppliersRepository } from '../supplier/supplier.repository';
+import { SuppliersRepository } from '../supplier/suppliers.repository';
 import { Supplier } from '../supplier/supplier.entity';
 
 @Module({

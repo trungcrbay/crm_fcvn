@@ -14,7 +14,7 @@ import { isUniqueConstraintError } from 'src/shared/helpers';
 import { QueryOptions } from 'src/shared/model/query.model';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
-import { SuppliersRepository } from '../supplier/supplier.repository';
+import { SuppliersRepository } from '../supplier/suppliers.repository';
 import { Like } from 'typeorm';
 import { GetSupplierGroupsQueryType } from './supplier-group.model';
 

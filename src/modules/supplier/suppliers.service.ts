@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SuppliersRepository } from './supplier.repository';
+import { SuppliersRepository } from './suppliers.repository';
 import { CreateSupplierBodyDTO, UpdateSupplierBodyDTO } from './supplier.dto';
 import { isUniqueConstraintError } from 'src/shared/helpers';
 import { Supplier } from './supplier.entity';

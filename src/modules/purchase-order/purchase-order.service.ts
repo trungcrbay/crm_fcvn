@@ -16,14 +16,24 @@ import { generatePurchaseCode } from 'src/shared/utils';
 import { GetPurchaseOrdersQueryType } from './purchase-order.model';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { Like } from 'typeorm';
+import { Logger } from 'nestjs-pino';
 
 @Injectable()
 export class PurchaseOrderService {
   constructor(
     private readonly dataSource: DataSource,
-
+    private readonly logger: Logger,
     private readonly idempotencyService: IdempotencyService,
   ) {}
+
+  private logIdempotencyError(action: string, error: unknown): void {
+    this.logger.warn(
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      `Idempotency ${action} failed`,
+    );
+  }
 
   private async findByIdempotencyKey(
     idempotencyKey: string,
@@ -81,9 +91,6 @@ export class PurchaseOrderService {
       .getRepository(PurchaseOrder)
       .findAndCount({
         where,
-        relations: {
-          items: true,
-        },
         skip,
         take: safeLimit,
         order: {
@@ -120,7 +127,9 @@ export class PurchaseOrderService {
     if (existingPurchaseOrder) {
       await this.idempotencyService
         .saveResponse(idempotencyKey, existingPurchaseOrder)
-        .catch(() => {});
+        .catch((error) => {
+          this.logIdempotencyError('saveResponse', error);
+        });
 
       return existingPurchaseOrder;
     }
@@ -147,7 +156,9 @@ export class PurchaseOrderService {
       if (existingAfterWait) {
         await this.idempotencyService
           .saveResponse(idempotencyKey, existingAfterWait)
-          .catch(() => {});
+          .catch((error) => {
+            this.logIdempotencyError('saveResponse', error);
+          });
 
         return existingAfterWait;
       }
@@ -171,7 +182,7 @@ export class PurchaseOrderService {
 
         if (!supplier) {
           throw new NotFoundException(
-            'Supplier không tồn tại hoặc không active',
+            'Nhà cung cấp không tồn tại hoặc không hoạt động',
           );
         }
 
@@ -222,7 +233,9 @@ export class PurchaseOrderService {
       // db commit success -> save response to redis
       await this.idempotencyService
         .saveResponse(idempotencyKey, result)
-        .catch(() => {});
+        .catch((error) => {
+          this.logIdempotencyError('saveResponse', error);
+        });
       return result;
     } catch (error) {
       // 7. Race condition / lock expired:
@@ -234,7 +247,9 @@ export class PurchaseOrderService {
         if (existingPurchaseOrder) {
           await this.idempotencyService
             .saveResponse(idempotencyKey, existingPurchaseOrder)
-            .catch(() => {});
+            .catch((error) => {
+              this.logIdempotencyError('saveResponse', error);
+            });
 
           return existingPurchaseOrder;
         }

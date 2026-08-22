@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { SharedQuerySchema } from 'src/shared/model/query.model';
 import { PaginationResSchema } from 'src/shared/model/response.model';
 import { UserStatus } from 'src/shared/constant/user.constant';
+import { RoleSchema } from '../roles/role.model';
 
 export const UserSchema = z.object({
   id: z.number(),
@@ -17,8 +18,18 @@ export const UserSchema = z.object({
   updatedAt: z.date(),
 });
 
+export const UserPublicSchema = UserSchema.omit({
+  password: true,
+});
+
+export const UserDetailSchema = UserSchema.omit({
+  password: true,
+}).extend({
+  role: RoleSchema.nullable(),
+});
+
 export const GetUsersResSchema = z.object({
-  data: z.array(UserSchema),
+  data: z.array(UserPublicSchema),
   meta: PaginationResSchema,
 });
 
@@ -99,3 +110,5 @@ export type GetUsersQueryType = z.infer<typeof GetUsersQuerySchema>;
 export type CreateUserBodyType = z.infer<typeof CreateUserBodySchema>;
 export type UpdateUserBodyType = z.infer<typeof UpdateUserBodySchema>;
 export type UserType = z.infer<typeof UserSchema>;
+export type UserPublicType = z.infer<typeof UserPublicSchema>;
+export type UserDetailType = z.infer<typeof UserDetailSchema>;
