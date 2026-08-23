@@ -3,6 +3,7 @@ import { SharedQuerySchema } from 'src/shared/model/query.model';
 import { PaginationResSchema } from 'src/shared/model/response.model';
 import { UserStatus } from 'src/shared/constant/user.constant';
 import { RoleSchema } from '../roles/role.model';
+import { DepartmentSchema } from '../departments/department.model';
 
 export const UserSchema = z.object({
   id: z.number(),
@@ -14,8 +15,9 @@ export const UserSchema = z.object({
   address: z.string().max(500).nullable(),
   status: z.enum([UserStatus.ACTIVE, UserStatus.INACTIVE]),
   roleId: z.number().positive(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  departmentId: z.number().positive(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const UserPublicSchema = UserSchema.omit({
@@ -25,7 +27,8 @@ export const UserPublicSchema = UserSchema.omit({
 export const UserDetailSchema = UserSchema.omit({
   password: true,
 }).extend({
-  role: RoleSchema.nullable(),
+  role: RoleSchema.nullable().optional(),
+  department: DepartmentSchema.nullable().optional(),
 });
 
 export const GetUsersResSchema = z.object({
@@ -38,6 +41,7 @@ export const GetUsersQuerySchema = SharedQuerySchema.extend({
   name: z.string().optional(),
   email: z.string().optional(),
   roleId: z.coerce.number().int().positive().optional(),
+  departmentId: z.coerce.number().int().positive().optional(),
   status: z.nativeEnum(UserStatus).optional(),
 });
 
@@ -72,6 +76,14 @@ export const CreateUserBodySchema = z
       })
       .int('Role không hợp lệ')
       .positive('Role không hợp lệ')
+      .optional(),
+
+    departmentId: z
+      .number({
+        error: 'Phòng ban không hợp lệ',
+      })
+      .int('Phòng ban không hợp lệ')
+      .positive('Phòng ban không hợp lệ')
       .optional(),
 
     status: z

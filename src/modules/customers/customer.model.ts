@@ -9,8 +9,8 @@ export const CustomerSchema = z.object({
   phone: z.string().min(9).max(15),
   address: z.string().max(500),
   customerCode: z.string().min(1).max(50),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const GetCustomersResSchema = z.object({

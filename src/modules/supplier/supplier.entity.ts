@@ -9,7 +9,7 @@ import {
 
 import { BaseEntity } from '../../shared/entities/base.entity';
 import { SupplierGroup } from '../supplier-group/supplier-group.entity';
-import { SupplierStatus } from 'src/shared/constant/supplier.constant';
+import { SupplierStatus } from '../../shared/constant/supplier.constant';
 
 @Entity('suppliers')
 export class Supplier extends BaseEntity {

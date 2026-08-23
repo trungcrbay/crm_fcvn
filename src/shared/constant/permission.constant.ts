@@ -61,12 +61,31 @@ export enum Permission {
   PURCHASE_ORDER_READ = 'purchaseOrder.read',
   PURCHASE_ORDER_MANAGE = 'purchaseOrder.manage',
   PURCHASE_ORDER_CREATE = 'purchaseOrder.create',
+
+  // Purchase Request Module
+  PURCHASE_REQUEST_READ = 'purchaseRequest.read',
+  PURCHASE_REQUEST_CREATE = 'purchaseRequest.create',
+  PURCHASE_REQUEST_UPDATE = 'purchaseRequest.update',
+  PURCHASE_REQUEST_DELETE = 'purchaseRequest.delete',
+  PURCHASE_REQUEST_SUBMIT = 'purchaseRequest.submit',
+  PURCHASE_REQUEST_APPROVE = 'purchaseRequest.approve',
+  PURCHASE_REQUEST_REJECT = 'purchaseRequest.reject',
+  PURCHASE_REQUEST_MANAGE = 'purchaseRequest.manage',
 }
 
 /**
  * Super Permissions - Manage permissions include all permissions in the module
  */
 export const MANAGE_PERMISSIONS: Record<string, Permission[]> = {
+  [Permission.PURCHASE_REQUEST_MANAGE]: [
+    Permission.PURCHASE_REQUEST_READ,
+    Permission.PURCHASE_REQUEST_CREATE,
+    Permission.PURCHASE_REQUEST_UPDATE,
+    Permission.PURCHASE_REQUEST_DELETE,
+    Permission.PURCHASE_REQUEST_SUBMIT,
+    Permission.PURCHASE_REQUEST_APPROVE,
+    Permission.PURCHASE_REQUEST_REJECT,
+  ],
   [Permission.USER_MANAGE]: [
     Permission.USER_READ,
     Permission.USER_CREATE,

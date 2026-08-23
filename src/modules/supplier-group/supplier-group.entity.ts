@@ -2,7 +2,7 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { BaseEntity } from '../../shared/entities/base.entity';
 import { Supplier } from '../supplier/supplier.entity';
-import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
+import { SupplierGroupStatus } from '../../shared/constant/supplier-group.constant';
 
 @Entity('supplier_groups')
 export class SupplierGroup extends BaseEntity {

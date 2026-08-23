@@ -23,6 +23,8 @@ import { SupplierModule } from './modules/supplier/suppliers.module';
 import { SupplierGroupModule } from './modules/supplier-group/supplier-group.module';
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-order-item.module';
+import { PurchaseRequestModule } from './modules/purchase-request/purchase-request.module';
+import { DepartmentsModule } from './modules/departments/departments.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -43,6 +45,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     UsersModule,
     RolesModule,
     CustomersModule,
+    DepartmentsModule,
     SharedModule,
     AuthModule,
     RefreshTokenModule,
@@ -51,6 +54,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     SupplierGroupModule,
     PurchaseOrderModule,
     PurchaseOrderItemModule,
+    PurchaseRequestModule,
   ],
   controllers: [AppController],
   providers: [

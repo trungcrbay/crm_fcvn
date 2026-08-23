@@ -8,8 +8,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { BaseEntity } from 'src/shared/entities/base.entity';
-import { Supplier } from 'src/modules/supplier/supplier.entity';
+import { BaseEntity } from '../../shared/entities/base.entity';
+import { Supplier } from '../supplier/supplier.entity';
 
 import { PurchaseOrderItem } from '../purchase-order-item/purchase-order-item.entity';
 
