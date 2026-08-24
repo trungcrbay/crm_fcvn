@@ -31,10 +31,17 @@ npm run migration:generate   # generate từ diff entity <-> DB
 npm run migration:run
 npm run migration:revert
 
-# Seed (chạy từ project root, sau khi migration:run)
-npx ts-node initScript/create-role.ts
-npx ts-node initScript/create-user.ts
-npx ts-node initScript/create-customer.ts
+# Setup nhanh DB từ đầu (chạy migration + seed toàn bộ)
+npm run migration:init-db
+# hoặc: npm run db:setup
+
+# Seed dữ liệu mẫu (chạy từ project root, sau khi migration:run)
+npm run db:seed
+# hoặc chạy từng script lẻ:
+# npx ts-node initScript/create-role.ts
+# npx ts-node initScript/create-department.ts
+# npx ts-node initScript/create-user.ts
+# npx ts-node initScript/create-customer.ts
 ```
 
 Jest config nằm inline trong `package.json`: `rootDir: "src"`, `testRegex: ".*\\.spec\\.ts$"`, `moduleNameMapper: { "^src/(.*)$": "<rootDir>/$1" }` → import `src/...` hoạt động cả trong test.
@@ -201,9 +208,8 @@ Global modules: `SharedModule` (`@Global`) exports `HashingService`, `TokenServi
 
 - `src/database/database.provider.ts`: postgres, `autoLoadEntities: true`, `synchronize: false` (hardcoded), `logging: true`, entities glob `src/**/*.entity.ts`.
 - `src/database/datasource-cli.ts`: DataSource cho TypeORM CLI (`migrations: src/database/migrations/*.ts`).
-- Migrations auto-generated (`AutoMigration<N>`), xem `src/database/migrations/`.
-- Lưu ý: bảng gốc `users`, `roles`, `customers`, `refresh_tokens` **không** được tạo bởi migration nào (đã tồn tại từ trước).
-- Xem thêm: [src/docs/migration.md](src/docs/migration.md).
+- Migrations: Bảng ban đầu `roles`, `users`, `customers`, `refresh_tokens` được tạo bởi migration khởi tạo `1786900000000-InitialTables.ts`.
+- Xem thêm: [docs/migration.md](docs/migration.md).
 
 ## Environment Variables
 

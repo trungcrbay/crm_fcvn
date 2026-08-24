@@ -8,7 +8,7 @@ export const PurchaseOrderItemSchema = z.object({
   price: z.number(),
   amount: z.number(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.string(),
 });
 
 export const CreatePurchaseOrderItemBodySchema = z

@@ -4,6 +4,7 @@ import { Permission } from '../src/shared/constant/permission.constant';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { User } from '../src/modules/users/user.entity';
+import { Department } from '../src/modules/departments/department.entity';
 
 const loadEnvFile = () => {
   const envPath = resolve(process.cwd(), '.env');
@@ -68,13 +69,13 @@ const roleSeed = [
       Permission.PURCHASE_ORDER_READ,
       Permission.PURCHASE_ORDER_MANAGE,
       Permission.PURCHASE_ORDER_CREATE,
+      Permission.PURCHASE_REQUEST_MANAGE,
       Permission.SUPPLIER_GROUP_READ,
       Permission.SUPPLIER_GROUP_CREATE,
       Permission.SUPPLIER_GROUP_UPDATE,
       Permission.SUPPLIER_GROUP_DELETE,
       Permission.SUPPLIER_GROUP_MANAGE,
       Permission.SUPPLIER_GROUP_CHANGE_STATUS,
-      Permission.SUPPLIER_READ,
       Permission.SUPPLIER_READ,
       Permission.SUPPLIER_UPDATE,
       Permission.SUPPLIER_DELETE,
@@ -102,11 +103,13 @@ const roleSeed = [
       Permission.FACILITY_CREATE,
       Permission.FACILITY_UPDATE,
       Permission.FACILITY_MANAGE,
+      Permission.PURCHASE_REQUEST_MANAGE,
     ],
   },
   {
-    name: 'MANAGER',
-    description: 'Quản lý bộ phận',
+    name: 'DEPARTMENT_MANAGER',
+    description:
+      'Trưởng bộ phận / Trưởng phòng ban (Duyệt & từ chối đề xuất mua hàng theo phòng ban)',
     permissions: [
       Permission.USER_READ,
       Permission.USER_CREATE,
@@ -121,6 +124,13 @@ const roleSeed = [
       Permission.FACILITY_READ,
       Permission.FACILITY_CREATE,
       Permission.FACILITY_UPDATE,
+      Permission.PURCHASE_REQUEST_READ,
+      Permission.PURCHASE_REQUEST_CREATE,
+      Permission.PURCHASE_REQUEST_UPDATE,
+      Permission.PURCHASE_REQUEST_DELETE,
+      Permission.PURCHASE_REQUEST_SUBMIT,
+      Permission.PURCHASE_REQUEST_APPROVE,
+      Permission.PURCHASE_REQUEST_REJECT,
     ],
   },
   {
@@ -131,6 +141,11 @@ const roleSeed = [
       Permission.DEPARTMENT_READ,
       Permission.FACILITY_READ,
       Permission.SUPPLIER_READ,
+      Permission.PURCHASE_REQUEST_READ,
+      Permission.PURCHASE_REQUEST_CREATE,
+      Permission.PURCHASE_REQUEST_UPDATE,
+      Permission.PURCHASE_REQUEST_DELETE,
+      Permission.PURCHASE_REQUEST_SUBMIT,
     ],
   },
   {
@@ -143,6 +158,11 @@ const roleSeed = [
       Permission.DEPARTMENT_READ,
       Permission.FACILITY_READ,
       Permission.SUPPLIER_READ,
+      Permission.PURCHASE_REQUEST_READ,
+      Permission.PURCHASE_REQUEST_CREATE,
+      Permission.PURCHASE_REQUEST_UPDATE,
+      Permission.PURCHASE_REQUEST_DELETE,
+      Permission.PURCHASE_REQUEST_SUBMIT,
     ],
   },
   {
@@ -156,6 +176,11 @@ const roleSeed = [
       Permission.FACILITY_READ,
       Permission.PERMISSION_READ,
       Permission.SUPPLIER_READ,
+      Permission.PURCHASE_REQUEST_READ,
+      Permission.PURCHASE_REQUEST_CREATE,
+      Permission.PURCHASE_REQUEST_UPDATE,
+      Permission.PURCHASE_REQUEST_DELETE,
+      Permission.PURCHASE_REQUEST_SUBMIT,
     ],
   },
   {
@@ -173,6 +198,11 @@ const roleSeed = [
       Permission.SUPPLIER_CREATE,
       Permission.SUPPLIER_GROUP_CREATE,
       Permission.PURCHASE_ORDER_MANAGE,
+      Permission.PURCHASE_REQUEST_READ,
+      Permission.PURCHASE_REQUEST_CREATE,
+      Permission.PURCHASE_REQUEST_UPDATE,
+      Permission.PURCHASE_REQUEST_DELETE,
+      Permission.PURCHASE_REQUEST_SUBMIT,
     ],
   },
 ];
@@ -184,7 +214,7 @@ const dataSource = new DataSource({
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'test',
-  entities: [Role, User],
+  entities: [Role, User, Department],
   synchronize: false,
   logging: false,
 });

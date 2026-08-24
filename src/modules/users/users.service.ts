@@ -44,6 +44,10 @@ export class UsersService {
         payload.roleId = createUserDto.roleId;
       }
 
+      if (createUserDto.departmentId !== undefined) {
+        payload.departmentId = createUserDto.departmentId;
+      }
+
       const createdUser = await this.usersRepository.create(payload);
       const { password: _password, ...userWithoutPassword } = createdUser;
       void _password;
@@ -79,6 +83,10 @@ export class UsersService {
       where.roleId = query.roleId;
     }
 
+    if (query.departmentId) {
+      where.departmentId = query.departmentId;
+    }
+
     if (query.status) {
       where.status = query.status;
     }
@@ -89,13 +97,20 @@ export class UsersService {
       search: query.name ? undefined : query.search,
       sortOrder: query.sortOrder,
       where,
+      relations: {
+        department: true,
+        role: true,
+      },
     };
 
     return this.usersRepository.findAll(options);
   }
 
   async findOne(id: number): Promise<User> {
-    const user = await this.usersRepository.findOne(id);
+    const user = await this.usersRepository.findOne(id, {
+      department: true,
+      role: true,
+    });
 
     if (!user) {
       throw new NotFoundException('Không tìm thấy người dùng');
@@ -121,6 +136,10 @@ export class UsersService {
 
     if (updateUserDto.roleId !== undefined) {
       payload.roleId = updateUserDto.roleId;
+    }
+
+    if (updateUserDto.departmentId !== undefined) {
+      payload.departmentId = updateUserDto.departmentId;
     }
 
     const user = await this.usersRepository.update(id, payload);

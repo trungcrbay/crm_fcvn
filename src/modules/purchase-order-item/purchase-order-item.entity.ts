@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { BaseEntity } from 'src/shared/entities/base.entity';
+import { BaseEntity } from '../../shared/entities/base.entity';
 import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
 
 @Entity('purchase_order_items')

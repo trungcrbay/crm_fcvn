@@ -158,6 +158,10 @@ describe('UsersService', () => {
         search: undefined,
         sortOrder: 'ASC',
         where: {},
+        relations: {
+          department: true,
+          role: true,
+        },
       });
       expect(result).toEqual(mockResult);
     });
@@ -189,6 +193,10 @@ describe('UsersService', () => {
           roleId: 3,
           status: UserStatus.ACTIVE,
         },
+        relations: {
+          department: true,
+          role: true,
+        },
       });
     });
 
@@ -208,6 +216,10 @@ describe('UsersService', () => {
         search: 'my_search_term',
         sortOrder: 'ASC',
         where: {},
+        relations: {
+          department: true,
+          role: true,
+        },
       });
     });
   });
@@ -223,7 +235,10 @@ describe('UsersService', () => {
 
       const result = await service.findOne(1);
 
-      expect(repository.findOne).toHaveBeenCalledWith(1);
+      expect(repository.findOne).toHaveBeenCalledWith(1, {
+        department: true,
+        role: true,
+      });
       expect(result).toBe(mockUser);
     });
 
@@ -231,7 +246,10 @@ describe('UsersService', () => {
       repository.findOne.mockResolvedValue(null);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
-      expect(repository.findOne).toHaveBeenCalledWith(999);
+      expect(repository.findOne).toHaveBeenCalledWith(999, {
+        department: true,
+        role: true,
+      });
     });
   });
 
@@ -286,7 +304,10 @@ describe('UsersService', () => {
 
       const result = await service.remove(1, currentUserId);
 
-      expect(repository.findOne).toHaveBeenCalledWith(1);
+      expect(repository.findOne).toHaveBeenCalledWith(1, {
+        department: true,
+        role: true,
+      });
       expect(repository.remove).toHaveBeenCalledWith(1, currentUserId);
       expect(result).toEqual({
         message: 'Xóa người dùng thành công',
