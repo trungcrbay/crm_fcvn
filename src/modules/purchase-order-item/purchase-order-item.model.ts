@@ -7,7 +7,7 @@ export const PurchaseOrderItemSchema = z.object({
   quantity: z.number(),
   price: z.number(),
   amount: z.number(),
-  createdAt: z.string(),
+  createdAt: z.date(),
   updatedAt: z.string(),
 });
 

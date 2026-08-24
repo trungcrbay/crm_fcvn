@@ -5,6 +5,7 @@ import {
   PurchaseRequestStatus,
 } from 'src/shared/constant/purchase-request.constant';
 import { z } from 'zod';
+import { DepartmentResRelationSchema } from '../departments/department.model';
 
 export const PurchaseRequestItemInputSchema = z
   .object({
@@ -31,12 +32,17 @@ export const PurchaseRequestItemInputSchema = z
   })
   .strict();
 
-export const PurchaseRequestItemSchema = PurchaseRequestItemInputSchema.extend({
+export const PurchaseRequestItemSchema = z.object({
   id: z.number(),
   purchaseRequestId: z.number(),
+  itemName: z.string(),
+  unit: z.string().nullable().optional(),
+  quantity: z.coerce.number(),
+  price: z.coerce.number(),
   amount: z.coerce.number(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  note: z.string().nullable().optional(),
+  createdAt: z.any().optional(),
+  updatedAt: z.any().optional(),
 });
 
 export const PurchaseRequestHistorySchema = z.object({
@@ -47,7 +53,7 @@ export const PurchaseRequestHistorySchema = z.object({
   action: z.nativeEnum(PurchaseRequestAction),
   reason: z.string().nullable().optional(),
   changedById: z.number(),
-  changedAt: z.string(),
+  changedAt: z.any(),
 });
 
 export const PurchaseRequestSchema = z.object({
@@ -55,16 +61,16 @@ export const PurchaseRequestSchema = z.object({
   code: z.string(),
   title: z.string(),
   description: z.string().nullable().optional(),
-  departmentId: z.number().nullable().optional(),
+  department: DepartmentResRelationSchema.nullable().optional(),
   status: z.nativeEnum(PurchaseRequestStatus),
   totalAmount: z.coerce.number(),
-  submittedAt: z.string().nullable().optional(),
-  approvedAt: z.string().nullable().optional(),
-  rejectedAt: z.string().nullable().optional(),
+  submittedAt: z.any().nullable().optional(),
+  approvedAt: z.any().nullable().optional(),
+  rejectedAt: z.any().nullable().optional(),
   rejectReason: z.string().nullable().optional(),
   createdById: z.number().nullable().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.any(),
+  updatedAt: z.any(),
   items: z.array(PurchaseRequestItemSchema).optional(),
 });
 

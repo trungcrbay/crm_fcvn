@@ -16,7 +16,7 @@ export const SupplierGroupSchema = z.object({
 
   status: z.nativeEnum(SupplierGroupStatus),
 
-  createdAt: z.string(),
+  createdAt: z.date(),
   updatedAt: z.string(),
 
   suppliers: z.array(SupplierSchema).optional(),

@@ -50,23 +50,45 @@ Sau khi generate migration, không chạy ngay trên production.
 
 Trước tiên kiểm tra file migration.
 
-## Chạy migration
+## Khởi tạo Database cho môi trường mới (Setup Database)
+
+Dành cho người mới tham gia dự án hoặc setup DB hoàn toàn mới từ đầu:
+
+```bash
+# Cách 1 (Khuyến nghị): Chạy toàn bộ migration và tự động seed dữ liệu mẫu
+npm run migration:init-db
+# hoặc
+npm run db:setup
+
+# Cách 2: Chạy tách biệt từng bước
+npm run migration:run  # Chạy full migrations (từ InitialTables đến migration mới nhất)
+npm run db:seed        # Seed toàn bộ dữ liệu mẫu (Roles, Departments, Users, Customers)
+```
+
+## Chạy migration đơn lẻ
 
 Sau khi review migration:
+
+```bash
 npm run migration:run
+```
+
 --> TypeORM sẽ chạy các migration chưa được thực thi.
 
 ## Kiểm tra Migration đã chạy
 
-TypeORM lưu lịch sử migration trong Database.
+TypeORM lưu lịch sử migration trong Database:
 
+```sql
 SELECT *
 FROM migrations
 ORDER BY timestamp DESC;
+```
 
 ## Rollback Migration
 
 Để rollback migration gần nhất:
-`ts 
+
+```bash
 npm run migration:revert
-`
+```

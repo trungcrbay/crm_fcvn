@@ -9,8 +9,8 @@ export const PurchaseOrderItemSchema = z.object({
   quantity: z.number(),
   price: z.number(),
   amount: z.number(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
 export const PurchaseOrderSchema = z.object({
@@ -19,8 +19,8 @@ export const PurchaseOrderSchema = z.object({
   supplierId: z.number(),
   totalAmount: z.number(),
   items: z.array(PurchaseOrderItemSchema),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
 export const GetPurchaseOrdersResSchema = z.object({

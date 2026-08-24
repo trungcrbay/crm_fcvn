@@ -129,7 +129,6 @@ export class PurchaseRequestService {
       let updatedItems = existing.items;
 
       if (dto.items && dto.items.length > 0) {
-        // Xóa items cũ và tạo items mới
         await itemRepository.delete({ purchaseRequestId: id });
 
         totalAmount = dto.items.reduce(
@@ -309,7 +308,6 @@ export class PurchaseRequestService {
       );
     }
 
-    // Kiểm tra phòng ban nếu không phải toàn quyền Manage
     const hasFullManage =
       userPermissions.includes(Permission.PURCHASE_REQUEST_MANAGE) ||
       userPermissions.includes(Permission.USER_MANAGE);
@@ -381,7 +379,6 @@ export class PurchaseRequestService {
       throw new ConflictException('Lý do từ chối không được để trống');
     }
 
-    // Kiểm tra phòng ban nếu không phải toàn quyền Manage
     const hasFullManage =
       userPermissions.includes(Permission.PURCHASE_REQUEST_MANAGE) ||
       userPermissions.includes(Permission.USER_MANAGE);
@@ -473,7 +470,7 @@ export class PurchaseRequestService {
       .getRepository(PurchaseRequest)
       .findAndCount({
         where,
-        relations: { items: true },
+        relations: { items: true, department: true },
         skip,
         take: safeLimit,
         order: {

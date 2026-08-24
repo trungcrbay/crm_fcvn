@@ -9,8 +9,14 @@ export const DepartmentSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().nullable().optional(),
   status: z.nativeEnum(DepartmentStatus),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.any().optional(),
+  updatedAt: z.any().optional(),
+});
+
+export const DepartmentResRelationSchema = DepartmentSchema.omit({
+  createdAt: true,
+  updatedAt: true,
+  description: true,
 });
 
 export const GetDepartmentsResSchema = z.object({

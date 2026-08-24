@@ -25,12 +25,18 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  async generateTokens({ userId, roleId, roleName }: AcessTokenPayloadCreate) {
+  async generateTokens({
+    userId,
+    roleId,
+    roleName,
+    departmentId,
+  }: AcessTokenPayloadCreate) {
     const [accessToken, refreshToken] = await Promise.all([
       this.tokenService.signAccessToken({
         userId,
         roleId,
         roleName,
+        departmentId,
       }),
       this.tokenService.signRefreshToken({ userId }),
     ]);
@@ -69,6 +75,7 @@ export class AuthService {
       userId: user.id,
       roleId: user.roleId,
       roleName: user.role.name,
+      departmentId: user.departmentId,
     });
   }
 
@@ -103,8 +110,9 @@ export class AuthService {
       });
       const $tokens = this.generateTokens({
         userId,
-        roleId: roleId as number,
+        roleId: roleId,
         roleName: user.role.name,
+        departmentId: user.departmentId,
       });
       const [, tokens] = await Promise.all([$deleteRefreshToken, $tokens]);
       return tokens;

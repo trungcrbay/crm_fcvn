@@ -19,8 +19,8 @@ export const SupplierSchema = z.object({
 
   supplierGroupId: z.number().int().positive().nullable(),
 
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
 export const ChangeStatusSupplierBodySchema = z

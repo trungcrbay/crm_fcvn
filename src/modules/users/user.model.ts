@@ -16,8 +16,8 @@ export const UserSchema = z.object({
   status: z.enum([UserStatus.ACTIVE, UserStatus.INACTIVE]),
   roleId: z.number().positive(),
   departmentId: z.number().positive(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
 export const UserPublicSchema = UserSchema.omit({

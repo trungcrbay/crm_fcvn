@@ -13,6 +13,7 @@ import {
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiCreatedResponse,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -63,8 +64,7 @@ export class PurchaseRequestController {
   ])
   @ApiOperation({ summary: 'Tạo đề nghị mua hàng mới (DRAFT)' })
   @ApiBody({ type: CreatePurchaseRequestBodyDTO })
-  @ApiResponse({
-    status: 201,
+  @ApiCreatedResponse({
     description: 'Tạo đề nghị mua hàng thành công',
     type: PurchaseRequestResDTO,
   })
@@ -81,6 +81,7 @@ export class PurchaseRequestController {
     Permission.PURCHASE_REQUEST_MANAGE,
     Permission.PURCHASE_REQUEST_READ,
   ])
+  @ZodSerializerDto(GetPurchaseRequestsResDTO)
   @ApiOperation({
     summary:
       'Tìm kiếm và phân trang danh sách đề nghị mua hàng (theo phòng ban, người tạo, trạng thái, thời gian)',
@@ -91,7 +92,6 @@ export class PurchaseRequestController {
     description: 'Danh sách đề nghị mua hàng',
     type: GetPurchaseRequestsResDTO,
   })
-  @ZodSerializerDto(GetPurchaseRequestsResDTO)
   async findAll(
     @Query(new ZodValidationPipe(GetPurchaseRequestsQuerySchema))
     query: GetPurchaseRequestsQueryType,
@@ -205,12 +205,13 @@ export class PurchaseRequestController {
   async approve(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
+    @ActiveUser('departmentId') departmentId: number,
     @ActiveUserPermissions() permissions: Permission[],
   ): Promise<PurchaseRequest> {
     return this.purchaseRequestService.approve(
       id,
       userId,
-      undefined,
+      departmentId,
       permissions,
     );
   }
@@ -236,13 +237,14 @@ export class PurchaseRequestController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: RejectPurchaseRequestBodyDTO,
     @ActiveUser('userId') userId: number,
+    @ActiveUser('departmentId') departmentId: number,
     @ActiveUserPermissions() permissions: Permission[],
   ): Promise<PurchaseRequest> {
     return this.purchaseRequestService.reject(
       id,
       dto,
       userId,
-      undefined,
+      departmentId,
       permissions,
     );
   }
