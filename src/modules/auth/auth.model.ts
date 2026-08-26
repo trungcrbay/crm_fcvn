@@ -23,8 +23,8 @@ export const RefreshTokenResSchema = LoginResSchema;
 export const RefreshTokenSchema = z.object({
   token: z.string(),
   userId: z.number(),
-  expiresAt: z.date(),
-  createdAt: z.date(),
+  expiresAt: z.string(),
+  createdAt: z.string(),
 });
 
 export type LoginBodyType = z.infer<typeof LoginBodySchema>;

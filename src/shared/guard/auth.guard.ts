@@ -16,6 +16,11 @@ import { TokenService } from '../services/token.service';
 import { RolesRepository } from 'src/modules/roles/roles.repository';
 import { AuthenticatedRequest } from '../types/request.type';
 import { AccessTokenPayload } from '../types/jwt.type';
+import { CacheService } from 'src/modules/cache/cache.service';
+import {
+  CACHE_TTL_ROLE_PERMISSIONS,
+  getRolePermissionsCacheKey,
+} from '../constant/cache.constant';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -23,6 +28,7 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly tokenService: TokenService,
     private readonly rolesRepository: RolesRepository,
+    private readonly cacheService: CacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -60,15 +66,37 @@ export class AuthGuard implements CanActivate {
 
   private async loadRolePermissions(roleId?: number): Promise<Permission[]> {
     if (!roleId) {
-      return [];
+      throw new UnauthorizedException('Vai trò không hợp lệ');
+    }
+
+    const cacheKey = getRolePermissionsCacheKey(roleId);
+
+    try {
+      const cachedPermissions =
+        await this.cacheService.get<Permission[]>(cacheKey);
+
+      if (cachedPermissions !== undefined) {
+        return cachedPermissions;
+      }
+    } catch {
+      // Cache is an optimization; auth should fall back to DB if Redis is down.
     }
 
     try {
       const role = await this.rolesRepository.findOne(roleId);
+      const permissions = role?.permissions ?? [];
 
-      return role?.permissions ?? [];
-    } catch {
-      return [];
+      await this.cacheService
+        .set(cacheKey, permissions, CACHE_TTL_ROLE_PERMISSIONS)
+        .catch(() => {});
+
+      return permissions;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      throw new UnauthorizedException('Không thể xác thực quyền truy cập');
     }
   }
 

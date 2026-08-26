@@ -3,15 +3,16 @@ import { createZodValidationPipe } from 'nestjs-zod';
 import { ZodError } from 'zod';
 
 const CustomZodValidationPipe = createZodValidationPipe({
-  // provide custom validation exception factory
-  createValidationException: (error: ZodError) => {
+  createValidationException: (error: unknown) => {
+    if (!(error instanceof ZodError)) {
+      return new UnprocessableEntityException('Validation failed');
+    }
+
     return new UnprocessableEntityException(
-      error.issues.map((issue) => {
-        return {
-          ...issue,
-          path: issue.path.join('.'),
-        };
-      }),
+      error.issues.map((issue) => ({
+        ...issue,
+        path: issue.path.join('.'),
+      })),
     );
   },
 });

@@ -15,6 +15,7 @@ import { AcessTokenPayloadCreate } from 'src/shared/types/jwt.type';
 import { TokenService } from 'src/shared/services/token.service';
 import { UserStatus } from 'src/shared/constant/user.constant';
 import { isUniqueConstraintError } from 'src/shared/helpers';
+import { hashToken } from 'src/shared/utils';
 
 @Injectable()
 export class AuthService {
@@ -24,19 +25,25 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  async generateTokens({ userId, roleId, roleName }: AcessTokenPayloadCreate) {
+  async generateTokens({
+    userId,
+    roleId,
+    roleName,
+    departmentId,
+  }: AcessTokenPayloadCreate) {
     const [accessToken, refreshToken] = await Promise.all([
       this.tokenService.signAccessToken({
         userId,
         roleId,
         roleName,
+        departmentId,
       }),
       this.tokenService.signRefreshToken({ userId }),
     ]);
     const decodedRefreshToken =
       await this.tokenService.verifyRefreshToken(refreshToken);
     await this.authRepository.createRefreshToken({
-      token: refreshToken,
+      token: hashToken(refreshToken),
       userId: userId,
       expiresAt: new Date(decodedRefreshToken.exp * 1000),
     });
@@ -51,15 +58,12 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('Tài khoản đã bị khóa');
-    }
-
     const isPasswordMatch = await this.hashingService.compare(
       body.password,
       user.password,
     );
-    if (!isPasswordMatch) {
+
+    if (!isPasswordMatch || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
@@ -71,6 +75,7 @@ export class AuthService {
       userId: user.id,
       roleId: user.roleId,
       roleName: user.role.name,
+      departmentId: user.departmentId,
     });
   }
 
@@ -79,9 +84,11 @@ export class AuthService {
       const { userId } =
         await this.tokenService.verifyRefreshToken(refreshToken);
 
+      const hashedToken = hashToken(refreshToken);
+
       const refreshTokenInDb =
         await this.authRepository.findUniqueRefreshTokenIncludeUserRole({
-          token: refreshToken,
+          token: hashedToken,
         });
 
       if (!refreshTokenInDb) {
@@ -99,12 +106,13 @@ export class AuthService {
       }
 
       const $deleteRefreshToken = this.authRepository.deleteRefreshToken({
-        token: refreshToken,
+        token: hashedToken,
       });
       const $tokens = this.generateTokens({
         userId,
-        roleId: roleId as number,
+        roleId: roleId,
         roleName: user.role.name,
+        departmentId: user.departmentId,
       });
       const [, tokens] = await Promise.all([$deleteRefreshToken, $tokens]);
       return tokens;
@@ -118,17 +126,14 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     try {
-      // 1. Kiểm tra refreshToken có hợp lệ không
       await this.tokenService.verifyRefreshToken(refreshToken);
-      // 2. Xóa refreshToken trong database
+      const hashedToken = hashToken(refreshToken);
       await this.authRepository.deleteRefreshToken({
-        token: refreshToken,
+        token: hashedToken,
       });
 
       return { message: 'Đăng xuất thành công' };
     } catch (error) {
-      // Trường hợp đã refresh token rồi, hãy thông báo cho user biết
-      // refresh token của họ đã bị đánh cắp
       if (isUniqueConstraintError(error)) {
         throw new UnauthorizedException('Refresh Token đã được sử dụng');
       }

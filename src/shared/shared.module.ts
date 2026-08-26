@@ -3,8 +3,9 @@ import { HashingService } from './services/hashing.service';
 import { TokenService } from './services/token.service';
 import { JwtModule } from '@nestjs/jwt';
 import { AppCacheModule } from 'src/modules/cache/cache.module';
+import { IdempotencyService } from './services/idempotency.service';
 
-const sharedServices = [HashingService, TokenService];
+const sharedServices = [HashingService, TokenService, IdempotencyService];
 
 @Global()
 @Module({

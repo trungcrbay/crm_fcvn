@@ -1,20 +1,46 @@
 import {
+  CallHandler,
+  ExecutionContext,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
 } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    console.log('Before...');
+  constructor(private readonly logger: PinoLogger) {
+    this.logger.setContext(LoggingInterceptor.name);
+  }
 
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const now = Date.now();
-    return next
-      .handle()
-      .pipe(tap(() => console.log(`After... ${Date.now() - now}ms`)));
+
+    const request = context.switchToHttp().getRequest<{
+      method: string;
+      url: string;
+    }>();
+
+    this.logger.info(
+      {
+        method: request.method,
+        url: request.url,
+      },
+      'Request started',
+    );
+
+    return next.handle().pipe(
+      tap(() => {
+        this.logger.info(
+          {
+            method: request.method,
+            url: request.url,
+            durationMs: Date.now() - now,
+          },
+          'Request completed',
+        );
+      }),
+    );
   }
 }

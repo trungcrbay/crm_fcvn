@@ -2,13 +2,13 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Delete,
   Post,
   Body,
   Put,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { SupplierGroupService } from './supplier-group.service';
 import {
@@ -29,20 +29,26 @@ import { Permission } from 'src/shared/constant/permission.constant';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
 import {
-  AssignSuppliersToGroupBodyDTO,
   ChangeStatusSupplierGroupBodyDTO,
   CreateSupplierGroupBodyDTO,
   GetSupplierGroupsResDTO,
   UpdateSupplierGroupBodyDTO,
 } from './supplier-group.dto';
+import {
+  GetSupplierGroupsQuerySchema,
+  type GetSupplierGroupsQueryType,
+} from './supplier-group.model';
 import { SupplierGroup } from './supplier-group.entity';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
-import { PaginationQuerySchema } from 'src/shared/model/request.model';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
-@Controller('supplier-group')
+import { SkipThrottle } from '@nestjs/throttler';
+import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
+
+@SkipThrottle()
+@Controller('supplier-groups')
 @ApiTags('Supplier Group')
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
@@ -50,7 +56,10 @@ export class SupplierGroupController {
   constructor(private readonly supplierGroupService: SupplierGroupService) {}
 
   @Post()
-  @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_CREATE])
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_GROUP_CREATE,
+  ])
   @ApiOperation({ summary: 'Tạo nhà cung cấp mới' })
   @ApiBody({ type: CreateSupplierGroupBodyDTO })
   @ApiCreatedResponse({
@@ -73,10 +82,16 @@ export class SupplierGroupController {
   }
 
   @Get()
-  @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_READ])
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_GROUP_READ,
+  ])
   @ZodSerializerDto(GetSupplierGroupsResDTO)
   @ApiOperation({ summary: 'Lấy danh sách nhóm nhà cung cấp' })
   @ApiQuery(PaginationQueryDTO)
+  @ApiQuery({ name: 'code', required: false, type: String })
+  @ApiQuery({ name: 'name', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, enum: SupplierGroupStatus })
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách nhóm nhà cung cấp thành công.',
@@ -87,14 +102,17 @@ export class SupplierGroupController {
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
   findAll(
-    @Query(new ZodValidationPipe(PaginationQuerySchema))
-    query: PaginationQueryDTO,
+    @Query(new ZodValidationPipe(GetSupplierGroupsQuerySchema))
+    query: GetSupplierGroupsQueryType,
   ): Promise<SupplierGroup[] | PaginatedResult<SupplierGroup>> {
     return this.supplierGroupService.findAll(query);
   }
 
   @Get(':id')
-  @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_READ])
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_GROUP_READ,
+  ])
   @ApiOperation({ summary: 'Lấy thông tin nhà cung cấp' })
   @ApiParam({
     name: 'id',
@@ -107,12 +125,17 @@ export class SupplierGroupController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id') id: string): Promise<SupplierGroup | null> {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<SupplierGroup | null> {
     return this.supplierGroupService.findOne(id);
   }
 
   @Put(':id')
-  @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_UPDATE])
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_GROUP_UPDATE,
+  ])
   @ApiOperation({ summary: 'Cập nhật thông tin nhóm nhà cung cấp' })
   @ApiBody({ type: UpdateSupplierGroupBodyDTO })
   @ApiParam({
@@ -127,7 +150,7 @@ export class SupplierGroupController {
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateSupplierGroupDto: UpdateSupplierGroupBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<SupplierGroup | null> {
@@ -135,7 +158,10 @@ export class SupplierGroupController {
   }
 
   @Put('/change-status/:id')
-  @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_CHANGE_STATUS])
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_GROUP_CHANGE_STATUS,
+  ])
   @ApiOperation({ summary: 'Cập nhật trạng thái nhóm nhà cung cấp' })
   @ApiBody({ type: ChangeStatusSupplierGroupBodyDTO })
   @ApiParam({
@@ -150,7 +176,7 @@ export class SupplierGroupController {
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
   changeStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() changeStatusDto: ChangeStatusSupplierGroupBodyDTO,
     @ActiveUser('userId') userId: number,
   ) {
@@ -161,39 +187,12 @@ export class SupplierGroupController {
     );
   }
 
-  @Post(':groupId/assign-suppliers')
-  @Permissions([
-    Permission.SUPPLIER_MANAGE,
-    Permission.SUPPLIER_ASSIGN_SUPPLIERS,
-  ])
-  @ApiOperation({ summary: 'Gán nhà cung cấp vào nhóm' })
-  @ApiBody({ type: AssignSuppliersToGroupBodyDTO })
-  @ApiParam({
-    name: 'groupId',
-    description: 'ID của nhóm nhà cung cấp',
-    example: '12',
-  })
-  @ApiBadRequestResponse({
-    description: 'Yêu cầu không hợp lệ.',
-  })
-  @ApiNotFoundResponse({
-    description: 'Không tìm thấy nhóm nhà cung cấp.',
-  })
-  assignSuppliers(
-    @Param('groupId', ParseIntPipe) groupId: number,
-    @Body() body: AssignSuppliersToGroupBodyDTO,
-    @ActiveUser('userId') userId: number,
-  ) {
-    return this.supplierGroupService.assignSuppliers(
-      groupId,
-      body.supplierIds,
-      userId,
-    );
-  }
-
   @Delete(':id')
   @ZodSerializerDto(MessageResDTO)
-  @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_DELETE])
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_GROUP_DELETE,
+  ])
   @ApiOperation({ summary: 'Xóa nhóm nhà cung cấp' })
   @ApiParam({
     name: 'id',
@@ -203,7 +202,10 @@ export class SupplierGroupController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
-  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('userId') userId: number,
+  ) {
     return this.supplierGroupService.remove(id, userId);
   }
 }

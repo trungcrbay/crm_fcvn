@@ -18,7 +18,7 @@ import { RefreshTokenModule } from './modules/refresh-token/refresh-token.module
 import { ProfileModule } from './modules/profile/profile.module';
 import { LoggerModule } from 'nestjs-pino';
 import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware';
-import { SupplierModule } from './modules/supplier/supplier.module';
+import { SupplierModule } from './modules/supplier/suppliers.module';
 import { SupplierGroupModule } from './modules/supplier-group/supplier-group.module';
 import { CustomersModule } from './modules/customers/customers.module';
 
@@ -26,16 +26,30 @@ import { CustomersModule } from './modules/customers/customers.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60000,
+          limit: 5,
+        },
+      ],
+    }),
+
     DatabaseModule,
     UsersModule,
     RolesModule,
     CustomersModule,
+    DepartmentsModule,
     SharedModule,
     AuthModule,
     RefreshTokenModule,
     ProfileModule,
     SupplierModule,
     SupplierGroupModule,
+    PurchaseOrderModule,
+    PurchaseOrderItemModule,
+    PurchaseRequestModule,
   ],
   controllers: [AppController],
   providers: [
@@ -46,6 +60,10 @@ import { CustomersModule } from './modules/customers/customers.module';
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
     AppService,
     {

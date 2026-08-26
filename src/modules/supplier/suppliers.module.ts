@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { SupplierService } from './supplier.service';
-import { SupplierController } from './supplier.controller';
-import { SuppliersRepository } from './supplier.repository';
+import { SupplierService } from './suppliers.service';
+import { SupplierController } from './suppliers.controller';
+import { SuppliersRepository } from './suppliers.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Supplier } from './supplier.entity';
 

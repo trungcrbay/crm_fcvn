@@ -1,4 +1,4 @@
-import { User } from 'src/modules/users/user.entity';
+import { User } from '../users/user.entity';
 import {
   BaseEntity,
   Column,
@@ -11,6 +11,7 @@ import {
 
 @Entity('refresh_tokens')
 @Index(['expiresAt'])
+@Index(['userId'])
 export class RefreshToken extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;

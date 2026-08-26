@@ -1,6 +1,13 @@
-import { DeepPartial, FindOptionsWhere, In, Like, Repository } from 'typeorm';
+import {
+  DeepPartial,
+  FindOptionsRelations,
+  FindOptionsWhere,
+  In,
+  Like,
+  Repository,
+} from 'typeorm';
 import { QueryOptions } from '../model/query.model';
-import { QueryDeepPartialEntity } from 'typeorm/browser';
+import { QueryDeepPartialEntity } from 'typeorm';
 
 export type EntityId = number | string;
 
@@ -76,9 +83,13 @@ export class BaseRepository<T extends { id?: EntityId } & SoftDeletableEntity> {
     });
   }
 
-  async findOne(id: EntityId): Promise<T | null> {
+  async findOne(
+    id: EntityId,
+    relations?: FindOptionsRelations<T>,
+  ): Promise<T | null> {
     return this.repository.findOne({
       where: { id } as any,
+      relations,
     });
   }
 

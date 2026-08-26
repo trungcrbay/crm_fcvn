@@ -10,9 +10,12 @@ import { CacheService } from './cache.service';
     CacheModule.register({
       isGlobal: true,
       stores: [
-        new Keyv(
-          new KeyvRedis(process.env.REDIS_URL ?? 'redis://localhost:6379'),
-        ),
+        new Keyv({
+          store: new KeyvRedis(
+            process.env.REDIS_URL ?? 'redis://localhost:6379',
+          ),
+          namespace: '',
+        }),
       ],
     }),
   ],

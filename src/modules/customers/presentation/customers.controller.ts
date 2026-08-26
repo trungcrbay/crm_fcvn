@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -40,7 +41,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
 import {
@@ -51,6 +51,7 @@ import {
 import { CustomerEntity } from '../domain/customers.entity';
 import { CustomerResponse } from '../application/mappers/customer-response.mapper';
 
+@SkipThrottle()
 @Controller('customers')
 @ApiTags('Customers')
 @ApiBearerAuth()
@@ -84,7 +85,6 @@ export class CustomersController {
   @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_READ])
   @ZodSerializerDto(GetCustomersResDTO)
   @ApiOperation({ summary: 'Lấy danh sách khách hàng' })
-  @ApiQuery(PaginationQueryDTO)
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách khách hàng thành công.',
@@ -92,6 +92,9 @@ export class CustomersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
+  @ApiPaginationQuery()
+  @ApiQuery({ name: 'name', required: false, type: String })
+  @ApiQuery({ name: 'email', required: false, type: String })
   findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryType,
@@ -119,7 +122,7 @@ export class CustomersController {
   @ApiBadRequestResponse({ description: 'Yêu cầu không hợp lệ.' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy khách hàng.' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCustomerDto: UpdateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<CustomerEntity> {

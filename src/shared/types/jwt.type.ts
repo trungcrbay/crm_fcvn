@@ -2,6 +2,7 @@ export interface AcessTokenPayloadCreate {
   userId: number;
   roleId: number;
   roleName: string;
+  departmentId?: number;
 }
 
 export interface AccessTokenPayload extends AcessTokenPayloadCreate {

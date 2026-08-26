@@ -8,6 +8,8 @@ import { Permission } from '../src/shared/constant/permission.constant';
 import { UserStatus } from '../src/shared/constant/user.constant';
 import { generateUserCode } from '../src/shared/utils';
 
+import { Department } from '../src/modules/departments/department.entity';
+
 const loadEnvFile = () => {
   const envPath = resolve(process.cwd(), '.env');
 
@@ -64,7 +66,7 @@ const dataSource = new DataSource({
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE || 'nestjs_crm',
-  entities: [Role, User],
+  entities: [Role, User, Department],
   synchronize: false,
   logging: false,
 });

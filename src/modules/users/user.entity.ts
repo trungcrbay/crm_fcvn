@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -8,8 +9,11 @@ import {
 import { UserStatus } from '../../shared/constant/user.constant';
 import { BaseEntity } from '../../shared/entities/base.entity';
 import { Role } from '../roles/role.entity';
+import { Department } from '../departments/department.entity';
 
 @Entity('users')
+@Index(['roleId'])
+@Index(['departmentId'])
 export class User extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -20,15 +24,22 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, select: false })
   password: string;
 
   @Column({ type: 'int', nullable: true })
-  roleId?: number;
+  roleId: number;
 
   @ManyToOne(() => Role, { nullable: true, eager: true })
   @JoinColumn({ name: 'roleId' })
   role?: Role;
+
+  @Column({ type: 'int', nullable: true })
+  departmentId: number;
+
+  @ManyToOne(() => Department, { nullable: true })
+  @JoinColumn({ name: 'departmentId' })
+  department?: Department;
 
   @Column({
     type: 'varchar',

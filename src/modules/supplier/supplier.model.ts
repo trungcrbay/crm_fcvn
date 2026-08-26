@@ -40,6 +40,7 @@ export const GetSuppliersQuerySchema = SharedQuerySchema.extend({
   name: z.string().optional(),
   email: z.string().optional(),
   supplierGroupId: z.coerce.number().int().positive().optional(),
+  status: z.nativeEnum(SupplierStatus).optional(),
 });
 
 export const CreateSupplierBodySchema = z

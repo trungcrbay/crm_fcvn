@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -11,17 +12,21 @@ import {
 } from '@nestjs/common';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import type { PaginatedResult } from '../../shared/repositories/base.repository';
-import {
-  PaginationQuerySchema,
-  type PaginationQueryType,
-} from '../../shared/model/request.model';
 
 import { User } from './user.entity';
 import { UsersService } from './users.service';
-import { CreateUserBodyDTO, UpdateUserBodyDTO } from './user.dto';
+import {
+  CreateUserBodyDTO,
+  GetUsersResDTO,
+  UpdateUserBodyDTO,
+  UserDetailDTO,
+  UserPublicDTO,
+} from './user.dto';
+import { GetUsersQuerySchema, type GetUsersQueryType } from './user.model';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
 import { Permission } from 'src/shared/constant/permission.constant';
+import { UserStatus } from 'src/shared/constant/user.constant';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -36,10 +41,12 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
+import { SkipThrottle } from '@nestjs/throttler';
 
+@SkipThrottle()
 @Controller('users')
 @ApiTags('User')
 @ApiBearerAuth()
@@ -48,6 +55,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
+  @ZodSerializerDto(UserPublicDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_CREATE])
   @ApiOperation({ summary: 'Tạo người dùng mới' })
   @ApiBody({ type: CreateUserBodyDTO })
@@ -72,9 +80,9 @@ export class UsersController {
   }
 
   @Get()
+  @ZodSerializerDto(GetUsersResDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_READ])
   @ApiOperation({ summary: 'Lấy danh sách người dùng' })
-  @ApiQuery(PaginationQueryDTO)
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách người dùng thành công.',
@@ -84,14 +92,21 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
+  @ApiPaginationQuery()
+  @ApiQuery({ name: 'userCode', required: false, type: String })
+  @ApiQuery({ name: 'name', required: false, type: String })
+  @ApiQuery({ name: 'email', required: false, type: String })
+  @ApiQuery({ name: 'roleId', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, enum: UserStatus })
   findAll(
-    @Query(new ZodValidationPipe(PaginationQuerySchema))
-    query: PaginationQueryType,
+    @Query(new ZodValidationPipe(GetUsersQuerySchema))
+    query: GetUsersQueryType,
   ): Promise<User[] | PaginatedResult<User>> {
     return this.usersService.findAll(query);
   }
 
   @Get(':id')
+  @ZodSerializerDto(UserDetailDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_READ])
   @ApiOperation({ summary: 'Lấy thông tin chi tiết người dùng' })
   @ApiParam({
@@ -110,11 +125,12 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id') id: string): Promise<User | null> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
     return this.usersService.findOne(id);
   }
 
   @Put(':id')
+  @ZodSerializerDto(UserPublicDTO)
   @Permissions([Permission.USER_MANAGE, Permission.USER_UPDATE])
   @ApiOperation({ summary: 'Cập nhật thông tin người dùng' })
   @ApiBody({ type: UpdateUserBodyDTO })
@@ -138,7 +154,7 @@ export class UsersController {
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<User | null> {
@@ -164,7 +180,10 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  remove(@Param('id') id: string, @ActiveUser('userId') userId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('userId') userId: number,
+  ) {
     return this.usersService.remove(id, userId);
   }
 }
