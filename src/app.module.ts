@@ -21,6 +21,11 @@ import { RequestIdMiddleware } from './shared/middleware/x-request-id-middleware
 import { SupplierModule } from './modules/supplier/suppliers.module';
 import { SupplierGroupModule } from './modules/supplier-group/supplier-group.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { PurchaseRequestModule } from './modules/purchase-request/purchase-request.module';
+import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-order-item.module';
+import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
+import { DepartmentsModule } from './modules/departments/departments.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [

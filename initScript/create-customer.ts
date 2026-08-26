@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Customer } from '../src/modules/customers/customer.entity';
 import { User } from '../src/modules/users/user.entity';
 import { Role } from '../src/modules/roles/role.entity';
+import { CustomerEntity } from 'src/modules/customers/domain/customers.entity';
 
 const loadEnvFile = () => {
   const envPath = resolve(process.cwd(), '.env');
@@ -39,7 +39,7 @@ loadEnvFile();
 const TOTAL_CUSTOMERS = 10_000;
 const BATCH_SIZE = 500;
 
-const CREATED_BY_ID = 2;
+// const CREATED_BY_ID = 2;
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -48,7 +48,7 @@ const dataSource = new DataSource({
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE || 'nestjs_crm',
-  entities: [Customer, User, Role],
+  entities: [CustomerEntity, User, Role],
   synchronize: false,
   logging: false,
 });
@@ -94,7 +94,7 @@ const generateCustomerCode = (index: number): string => {
   return `CUS${String(index).padStart(6, '0')}`;
 };
 
-const generateCustomer = (index: number): Partial<Customer> => {
+const generateCustomer = (index: number): Partial<CustomerEntity> => {
   const name = `${randomItem(firstNames)} ${randomItem(lastNames)}`;
   const customerCode = generateCustomerCode(index);
 
@@ -110,14 +110,14 @@ const generateCustomer = (index: number): Partial<Customer> => {
       'Trần Duy Hưng',
       'Hoàng Quốc Việt',
     ])}, ${randomItem(cities)}`,
-    createdById: CREATED_BY_ID,
+    // createdById: CREATED_BY_ID,
   };
 };
 
 async function seedCustomers() {
   await dataSource.initialize();
 
-  const customerRepository = dataSource.getRepository(Customer);
+  const customerRepository = dataSource.getRepository(CustomerEntity);
 
   const startedAt = Date.now();
 
@@ -125,7 +125,7 @@ async function seedCustomers() {
     for (let start = 1; start <= TOTAL_CUSTOMERS; start += BATCH_SIZE) {
       const end = Math.min(start + BATCH_SIZE - 1, TOTAL_CUSTOMERS);
 
-      const customers: Partial<Customer>[] = [];
+      const customers: Partial<CustomerEntity>[] = [];
 
       for (let index = start; index <= end; index++) {
         customers.push(generateCustomer(index));

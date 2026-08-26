@@ -50,6 +50,8 @@ import {
 } from '../application/customers.dto';
 import { CustomerEntity } from '../domain/customers.entity';
 import { CustomerResponse } from '../application/mappers/customer-response.mapper';
+import { SkipThrottle } from '@nestjs/throttler';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 
 @SkipThrottle()
 @Controller('customers')
@@ -122,7 +124,7 @@ export class CustomersController {
   @ApiBadRequestResponse({ description: 'Yêu cầu không hợp lệ.' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy khách hàng.' })
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) id: any,
     @Body() updateCustomerDto: UpdateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<CustomerEntity> {
