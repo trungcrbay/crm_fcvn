@@ -1,0 +1,92 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: crm_nestjs_app
+    restart: unless-stopped
+    ports:
+      - '${PORT:-8000}:3000'
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_DATABASE=${DB_DATABASE:-nestjs_crm}
+      - REDIS_URL=redis://redis:6379
+      - DB_ADMIN_PASSWORD_TEST=${DB_ADMIN_PASSWORD_TEST:-123456}
+      - DB_SALES_PASSWORD_TEST=${DB_SALES_PASSWORD_TEST:-123456}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:-access_secret_crm_2026_fc_vietnam}
+      - ACCESS_TOKEN_EXPIRES_IN=${ACCESS_TOKEN_EXPIRES_IN:-1d}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET:-refresh_secret_crm_2026_fc_vietnam}
+      - REFRESH_TOKEN_EXPIRES_IN=${REFRESH_TOKEN_EXPIRES_IN:-7d}
+      - IDEMPOTENCY_KEY=${IDEMPOTENCY_KEY:-crm_idempotency_key}
+      - NODE_ENV=${NODE_ENV:-development}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - crm_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm_postgres
+    restart: unless-stopped
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_DATABASE:-nestjs_crm}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-nestjs_crm}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - crm_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: crm_redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
+    networks:
+      - crm_network
+
+volumes:
+  postgres_data:
+    name: crm_postgres_data
+  redis_data:
+    name: crm_redis_data
+
+networks:
+  crm_network:
+    name: crm_network
+    driver: bridge

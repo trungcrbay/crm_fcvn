@@ -1,0 +1,11 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: crm_nestjs_app_prod
+    restart: always
+    environment:
+      - NODE_ENV=production
+    volumes: []
