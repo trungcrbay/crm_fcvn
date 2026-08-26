@@ -15,11 +15,13 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { ZodSerializerDto } from 'nestjs-zod';
+import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
+import { DepartmentStatus } from 'src/shared/constant/department.constant';
 import { Permission } from 'src/shared/constant/permission.constant';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
@@ -30,10 +32,13 @@ import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import {
   CreateDepartmentBodyDTO,
   DepartmentResDTO,
-  GetDepartmentsQueryDTO,
   GetDepartmentsResDTO,
   UpdateDepartmentBodyDTO,
 } from './department.dto';
+import {
+  GetDepartmentsQuerySchema,
+  type GetDepartmentsQueryType,
+} from './department.model';
 import { Department } from './department.entity';
 
 import { DepartmentsService } from './departments.service';
@@ -67,6 +72,9 @@ export class DepartmentsController {
   @Permissions([Permission.DEPARTMENT_MANAGE, Permission.DEPARTMENT_READ])
   @ApiOperation({ summary: 'Danh sách và tìm kiếm phòng ban' })
   @ApiPaginationQuery()
+  @ApiQuery({ name: 'departmentCode', required: false, type: String })
+  @ApiQuery({ name: 'name', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, enum: DepartmentStatus })
   @ApiResponse({
     status: 200,
     description: 'Danh sách phòng ban',
@@ -74,8 +82,8 @@ export class DepartmentsController {
   })
   @ZodSerializerDto(GetDepartmentsResDTO)
   async findAll(
-    @Query()
-    query: GetDepartmentsQueryDTO,
+    @Query(new ZodValidationPipe(GetDepartmentsQuerySchema))
+    query: GetDepartmentsQueryType,
   ): Promise<Department[] | PaginatedResult<Department>> {
     return this.departmentsService.findAll(query);
   }

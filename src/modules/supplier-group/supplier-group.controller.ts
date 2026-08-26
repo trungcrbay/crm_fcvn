@@ -40,7 +40,7 @@ import {
 } from './supplier-group.model';
 import { SupplierGroup } from './supplier-group.entity';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
-import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
@@ -88,7 +88,7 @@ export class SupplierGroupController {
   ])
   @ZodSerializerDto(GetSupplierGroupsResDTO)
   @ApiOperation({ summary: 'Lấy danh sách nhóm nhà cung cấp' })
-  @ApiQuery(PaginationQueryDTO)
+  @ApiPaginationQuery()
   @ApiQuery({ name: 'code', required: false, type: String })
   @ApiQuery({ name: 'name', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, enum: SupplierGroupStatus })
