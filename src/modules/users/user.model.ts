@@ -15,7 +15,7 @@ export const UserSchema = z.object({
   address: z.string().max(500).nullable(),
   status: z.enum([UserStatus.ACTIVE, UserStatus.INACTIVE]),
   roleId: z.number().positive(),
-  departmentId: z.number().positive(),
+  departmentId: z.number().positive().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
