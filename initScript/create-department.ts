@@ -59,15 +59,15 @@ const departmentsSeed = [
     status: DepartmentStatus.ACTIVE,
   },
   {
-    departmentCode: 'DEPT_HR',
-    name: 'Phòng Nhân Sự',
-    description: 'Quản lý nhân sự, tuyển dụng, đào tạo và chính sách chế độ',
+    departmentCode: 'DEPT_CSKH',
+    name: 'Phòng Chăm Sóc Khách Hàng',
+    description: 'Tiếp nhận xử lý khiếu nại, chăm sóc sau bán và hỗ trợ sự cố',
     status: DepartmentStatus.ACTIVE,
   },
   {
-    departmentCode: 'DEPT_IT',
-    name: 'Phòng Công Nghệ Thông Tin',
-    description: 'Vận hành hạ tầng, bảo mật và phát triển hệ thống phần mềm',
+    departmentCode: 'DEPT_MARKETING',
+    name: 'Phòng Marketing',
+    description: 'Quản lý nguồn lead, truyền thông và phát triển thương hiệu',
     status: DepartmentStatus.ACTIVE,
   },
 ];
