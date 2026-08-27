@@ -29,6 +29,7 @@ import { Permission } from 'src/shared/constant/permission.constant';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
 import {
+  AssignSuppliersToGroupBodyDTO,
   ChangeStatusSupplierGroupBodyDTO,
   CreateSupplierGroupBodyDTO,
   GetSupplierGroupsResDTO,
@@ -183,6 +184,45 @@ export class SupplierGroupController {
     return this.supplierGroupService.changeStatus(
       id,
       changeStatusDto.status,
+      userId,
+    );
+  }
+
+  @Put(':id/assign-suppliers')
+  @ZodSerializerDto(MessageResDTO)
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_ASSIGN_SUPPLIERS,
+  ])
+  @ApiOperation({ summary: 'Gán nhà cung cấp vào nhóm' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của nhóm nhà cung cấp',
+    example: '12',
+  })
+  @ApiBody({ type: AssignSuppliersToGroupBodyDTO })
+  @ApiResponse({
+    status: 200,
+    description: 'Gán nhà cung cấp vào nhóm thành công.',
+    type: MessageResDTO,
+  })
+  @ApiBadRequestResponse({
+    description: 'Yêu cầu không hợp lệ hoặc nhóm đã ngừng sử dụng.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Không tìm thấy nhóm nhà cung cấp.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Bạn không có quyền thực hiện hành động này.',
+  })
+  assignSuppliers(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: AssignSuppliersToGroupBodyDTO,
+    @ActiveUser('userId') userId: number,
+  ) {
+    return this.supplierGroupService.assignSuppliers(
+      id,
+      body.supplierIds,
       userId,
     );
   }

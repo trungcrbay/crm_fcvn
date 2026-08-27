@@ -124,6 +124,8 @@ export const MANAGE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.SUPPLIER_GROUP_CREATE,
     Permission.SUPPLIER_GROUP_UPDATE,
     Permission.SUPPLIER_GROUP_DELETE,
+    Permission.SUPPLIER_GROUP_CHANGE_STATUS,
+    Permission.SUPPLIER_ASSIGN_SUPPLIERS,
   ],
 };
 
