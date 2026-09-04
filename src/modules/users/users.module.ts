@@ -10,7 +10,6 @@ import {
 } from './application';
 import { USERS_REPOSITORY } from './domain';
 import { UserOrmEntity, UsersTypeormRepository } from './infrastructure';
-import { UsersService } from './users.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserOrmEntity])],
@@ -30,12 +29,10 @@ import { UsersService } from './users.service';
       provide: UsersTypeormRepository,
       useExisting: USERS_REPOSITORY,
     },
-    UsersService,
   ],
   exports: [
     USERS_REPOSITORY,
     UsersTypeormRepository,
-    UsersService,
     CreateUserUseCase,
     FindAllUsersUseCase,
     FindOneUserUseCase,

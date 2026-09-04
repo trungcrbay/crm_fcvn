@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Department } from '../src/modules/departments/department.entity';
 import { DepartmentStatus } from '../src/shared/constant/department.constant';
-import { User } from '../src/modules/users/user.entity';
 import { Role } from '../src/modules/roles/role.entity';
+import { User } from 'src/modules/users';
 
 const loadEnvFile = () => {
   const envPath = resolve(process.cwd(), '.env');

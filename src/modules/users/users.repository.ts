@@ -1,4 +1,4 @@
-// Re-export UsersTypeormRepository as UsersRepository để ProfileModule/AuthModule không bị lỗi
+// Re-export UsersTypeormRepository as UsersRepository để ProfileModule không bị lỗi
 export {
   UsersTypeormRepository as UsersRepository,
   UsersTypeormRepository,

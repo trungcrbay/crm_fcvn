@@ -1,4 +1,4 @@
-// Re-export UserOrmEntity để tương thích với ProfileModule, AuthModule, BaseEntity và seed scripts
+// Re-export UserOrmEntity as User để tương thích ngược với ProfileModule, AuthModule, BaseEntity, RefreshToken, seeds,...
 export {
   UserOrmEntity as User,
   UserOrmEntity,

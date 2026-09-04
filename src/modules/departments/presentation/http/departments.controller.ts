@@ -34,9 +34,17 @@ import {
   GetDepartmentsResDTO,
   UpdateDepartmentBodyDTO,
 } from './department.dto';
-import { Department } from './department.entity';
-
-import { DepartmentsService } from './departments.service';
+import {
+  CreateDepartmentUseCase,
+  FindAllDepartmentsUseCase,
+  FindOneDepartmentUseCase,
+  UpdateDepartmentUseCase,
+  RemoveDepartmentUseCase,
+} from '../../application';
+import {
+  DepartmentResponse,
+  DepartmentResponseMapper,
+} from '../mappers/department-response.mapper';
 
 @SkipThrottle()
 @Controller('departments')
@@ -44,7 +52,13 @@ import { DepartmentsService } from './departments.service';
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
 export class DepartmentsController {
-  constructor(private readonly departmentsService: DepartmentsService) {}
+  constructor(
+    private readonly createDepartmentUseCase: CreateDepartmentUseCase,
+    private readonly findAllDepartmentsUseCase: FindAllDepartmentsUseCase,
+    private readonly findOneDepartmentUseCase: FindOneDepartmentUseCase,
+    private readonly updateDepartmentUseCase: UpdateDepartmentUseCase,
+    private readonly removeDepartmentUseCase: RemoveDepartmentUseCase,
+  ) {}
 
   @Post()
   @Permissions([Permission.DEPARTMENT_MANAGE, Permission.DEPARTMENT_CREATE])
@@ -53,14 +67,14 @@ export class DepartmentsController {
   @ApiResponse({
     status: 201,
     description: 'Tạo phòng ban thành công',
-    type: Department,
   })
   @ZodSerializerDto(DepartmentResDTO)
   async create(
     @Body() dto: CreateDepartmentBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<Department> {
-    return this.departmentsService.create(dto, userId);
+  ): Promise<DepartmentResponse> {
+    const entity = await this.createDepartmentUseCase.execute(dto, userId);
+    return DepartmentResponseMapper.toResponse(entity);
   }
 
   @Get()
@@ -70,14 +84,14 @@ export class DepartmentsController {
   @ApiResponse({
     status: 200,
     description: 'Danh sách phòng ban',
-    type: Department,
   })
   @ZodSerializerDto(GetDepartmentsResDTO)
   async findAll(
     @Query()
     query: GetDepartmentsQueryDTO,
-  ): Promise<Department[] | PaginatedResult<Department>> {
-    return this.departmentsService.findAll(query);
+  ): Promise<DepartmentResponse[] | PaginatedResult<DepartmentResponse>> {
+    const result = await this.findAllDepartmentsUseCase.execute(query);
+    return DepartmentResponseMapper.toPaginatedResponse(result);
   }
 
   @Get(':id')
@@ -87,11 +101,13 @@ export class DepartmentsController {
   @ApiResponse({
     status: 200,
     description: 'Chi tiết phòng ban',
-    type: Department,
   })
   @ZodSerializerDto(DepartmentResDTO)
-  async findOne(@Param('id', ParseIntPipe) id: number): Promise<Department> {
-    return this.departmentsService.findOne(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<DepartmentResponse> {
+    const entity = await this.findOneDepartmentUseCase.execute(id);
+    return DepartmentResponseMapper.toResponse(entity);
   }
 
   @Put(':id')
@@ -102,15 +118,15 @@ export class DepartmentsController {
   @ApiResponse({
     status: 200,
     description: 'Cập nhật phòng ban thành công',
-    type: Department,
   })
   @ZodSerializerDto(DepartmentResDTO)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDepartmentBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<Department> {
-    return this.departmentsService.update(id, dto, userId);
+  ): Promise<DepartmentResponse> {
+    const entity = await this.updateDepartmentUseCase.execute(id, dto, userId);
+    return DepartmentResponseMapper.toResponse(entity);
   }
 
   @Delete(':id')
@@ -127,6 +143,6 @@ export class DepartmentsController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
   ): Promise<{ message: string }> {
-    return this.departmentsService.remove(id, userId);
+    return this.removeDepartmentUseCase.execute(id, userId);
   }
 }

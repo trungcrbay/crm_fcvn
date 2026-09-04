@@ -10,9 +10,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-
-import { Role } from './role.entity';
-import { RolesService } from './roles.service';
 import {
   CreateRoleBodyDTO,
   GetRolesResDTO,
@@ -41,6 +38,17 @@ import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
+import {
+  CreateRoleUseCase,
+  FindAllRolesUseCase,
+  FindOneRoleUseCase,
+  RemoveRoleUseCase,
+  UpdateRoleUseCase,
+} from '../../application';
+import {
+  RoleResponse,
+  RoleResponseMapper,
+} from '../mappers/role-response.mapper';
 
 @SkipThrottle()
 @Controller('roles')
@@ -48,7 +56,13 @@ import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
 export class RolesController {
-  constructor(private readonly rolesService: RolesService) {}
+  constructor(
+    private readonly createRoleUseCase: CreateRoleUseCase,
+    private readonly findAllRolesUseCase: FindAllRolesUseCase,
+    private readonly findOneRoleUseCase: FindOneRoleUseCase,
+    private readonly updateRoleUseCase: UpdateRoleUseCase,
+    private readonly removeRoleUseCase: RemoveRoleUseCase,
+  ) {}
 
   @Post()
   @Permissions([Permission.PERMISSION_MANAGE, Permission.PERMISSION_CREATE])
@@ -56,7 +70,6 @@ export class RolesController {
   @ApiBody({ type: CreateRoleBodyDTO })
   @ApiCreatedResponse({
     description: 'Tạo vai trò thành công.',
-    type: Role,
   })
   @ApiBadRequestResponse({
     description: 'Dữ liệu đầu vào không hợp lệ.',
@@ -64,11 +77,12 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  create(
+  async create(
     @Body() createRoleDto: CreateRoleBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<Role> {
-    return this.rolesService.create(createRoleDto, userId);
+  ): Promise<RoleResponse> {
+    const role = await this.createRoleUseCase.execute(createRoleDto, userId);
+    return RoleResponseMapper.toResponse(role);
   }
 
   @Get()
@@ -78,7 +92,6 @@ export class RolesController {
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách vai trò thành công.',
-    type: Role,
     isArray: true,
   })
   @ApiForbiddenResponse({
@@ -86,11 +99,12 @@ export class RolesController {
   })
   @ApiPaginationQuery()
   @ApiQuery({ name: 'name', required: false, type: String })
-  findAll(
+  async findAll(
     @Query(new ZodValidationPipe(GetRolesQuerySchema))
     query: GetRoleQueryType,
-  ): Promise<Role[] | PaginatedResult<Role>> {
-    return this.rolesService.findAll(query);
+  ): Promise<RoleResponse[] | PaginatedResult<RoleResponse>> {
+    const result = await this.findAllRolesUseCase.execute(query);
+    return RoleResponseMapper.toPaginatedResponse(result);
   }
 
   @Get(':id')
@@ -104,7 +118,6 @@ export class RolesController {
   @ApiResponse({
     status: 200,
     description: 'Lấy thông tin vai trò thành công.',
-    type: Role,
   })
   @ApiNotFoundResponse({
     description: 'Không tìm thấy vai trò.',
@@ -112,8 +125,9 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<Role> {
-    return this.rolesService.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<RoleResponse> {
+    const role = await this.findOneRoleUseCase.execute(id);
+    return RoleResponseMapper.toResponse(role);
   }
 
   @Put(':id')
@@ -128,7 +142,6 @@ export class RolesController {
   @ApiResponse({
     status: 200,
     description: 'Cập nhật vai trò thành công.',
-    type: Role,
   })
   @ApiBadRequestResponse({
     description: 'Yêu cầu không hợp lệ.',
@@ -139,12 +152,17 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateRoleDto: UpdateRoleBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<Role | null> {
-    return this.rolesService.update(id, updateRoleDto, userId);
+  ): Promise<RoleResponse> {
+    const role = await this.updateRoleUseCase.execute(
+      id,
+      updateRoleDto,
+      userId,
+    );
+    return RoleResponseMapper.toResponse(role);
   }
 
   @Delete(':id')
@@ -166,10 +184,10 @@ export class RolesController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  remove(
+  async remove(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
   ) {
-    return this.rolesService.remove(id, userId);
+    return await this.removeRoleUseCase.execute(id, userId);
   }
 }
