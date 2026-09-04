@@ -1,19 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
+import { CustomerOrmEntity } from './customers.orm-entity';
+import { CustomerMapper } from './customers.mapper';
 import {
   BaseRepository,
   PaginatedResult,
-} from '../../../../shared/repositories/base.repository';
-import { QueryOptions } from '../../../../shared/model/query.model';
+} from 'src/shared/repositories/base.repository';
+import { QueryOptions } from 'src/shared/model/query.model';
 import {
   CreateCustomerData,
+  CustomerEntity,
   ICustomersRepository,
   UpdateCustomerData,
-} from '../../domain/customers.repository.interface';
-import { CustomerOrmEntity } from './customers.orm-entity';
-import { CustomerMapper } from './customers.mapper';
-import { CustomerEntity } from '../../domain/customers.entity';
+} from '../../domain';
 
 /**
  * Adapter: implement port của domain, dùng BaseRepository (TypeORM)
@@ -21,7 +22,7 @@ import { CustomerEntity } from '../../domain/customers.entity';
  * khi override method cùng tên nhưng khác return type.
  */
 @Injectable()
-export class CustomersRepository implements ICustomersRepository {
+export class CustomersTypeormRepository implements ICustomersRepository {
   private readonly baseRepository: BaseRepository<CustomerOrmEntity>;
 
   constructor(
@@ -68,10 +69,3 @@ export class CustomersRepository implements ICustomersRepository {
     await this.baseRepository.remove(id, userId);
   }
 }
-
-/**
- * Lưu ý: mình dùng new BaseRepository(repository) (composition) thay vì extends BaseRepository như code cũ.
- * Nếu kế thừa, TypeScript sẽ báo lỗi override vì method create/findOne/... của interface trả về CustomerEntity không tương thích
- * (không phải subtype)
- * với return type gốc CustomerOrmEntity của BaseRepository. Composition tránh hoàn toàn vấn đề này.
- */

@@ -1,7 +1,5 @@
-// application/mappers/customer-response.mapper.ts
-
 import { PaginatedResult } from 'src/shared/repositories/base.repository';
-import { CustomerEntity } from '../../domain/customers.entity';
+import { CustomerEntity } from '../../domain';
 
 export interface CustomerResponse {
   id: number;

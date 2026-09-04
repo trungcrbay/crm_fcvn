@@ -11,18 +11,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
-import { PaginatedResult } from '../../../shared/repositories/base.repository';
+import { PaginatedResult } from '../../../../shared/repositories/base.repository';
 import {
   PaginationQuerySchema,
   type PaginationQueryType,
-} from '../../../shared/model/request.model';
+} from '../../../../shared/model/request.model';
 import {
   CreateCustomerUseCase,
   FindAllCustomersUseCase,
   FindOneCustomerUseCase,
   UpdateCustomerUseCase,
   RemoveCustomerUseCase,
-} from '../application/use-cases';
+} from '../../application';
 
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
@@ -47,9 +47,11 @@ import {
   CreateCustomerBodyDTO,
   GetCustomersResDTO,
   UpdateCustomerBodyDTO,
-} from '../application/customers.dto';
-import { CustomerEntity } from '../domain/customers.entity';
-import { CustomerResponse } from '../application/mappers/customer-response.mapper';
+} from './customers.dto';
+import {
+  CustomerResponse,
+  CustomerResponseMapper,
+} from '../mappers/customer-response.mapper';
 import { SkipThrottle } from '@nestjs/throttler';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 
@@ -76,11 +78,15 @@ export class CustomersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  create(
+  async create(
     @Body() createCustomerDto: CreateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
   ): Promise<CustomerResponse> {
-    return this.createCustomerUseCase.execute(createCustomerDto, userId);
+    const entity = await this.createCustomerUseCase.execute(
+      createCustomerDto,
+      userId,
+    );
+    return CustomerResponseMapper.toResponse(entity);
   }
 
   @Get()
@@ -97,11 +103,12 @@ export class CustomersController {
   @ApiPaginationQuery()
   @ApiQuery({ name: 'name', required: false, type: String })
   @ApiQuery({ name: 'email', required: false, type: String })
-  findAll(
+  async findAll(
     @Query(new ZodValidationPipe(PaginationQuerySchema))
     query: PaginationQueryType,
   ): Promise<CustomerResponse[] | PaginatedResult<CustomerResponse>> {
-    return this.findAllCustomersUseCase.execute(query);
+    const result = await this.findAllCustomersUseCase.execute(query);
+    return CustomerResponseMapper.toPaginatedResponse(result);
   }
 
   @Get(':id')
@@ -112,8 +119,9 @@ export class CustomersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id') id: string): Promise<CustomerEntity> {
-    return this.findOneCustomerUseCase.execute(id);
+  async findOne(@Param('id') id: string): Promise<CustomerResponse> {
+    const entity = await this.findOneCustomerUseCase.execute(id);
+    return CustomerResponseMapper.toResponse(entity);
   }
 
   @Put(':id')
@@ -123,12 +131,17 @@ export class CustomersController {
   @ApiParam({ name: 'id', description: 'ID của khách hàng', example: '12' })
   @ApiBadRequestResponse({ description: 'Yêu cầu không hợp lệ.' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy khách hàng.' })
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: any,
     @Body() updateCustomerDto: UpdateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<CustomerEntity> {
-    return this.updateCustomerUseCase.execute(id, updateCustomerDto, userId);
+  ): Promise<CustomerResponse> {
+    const entity = await this.updateCustomerUseCase.execute(
+      String(id),
+      updateCustomerDto,
+      userId,
+    );
+    return CustomerResponseMapper.toResponse(entity);
   }
 
   @Delete(':id')

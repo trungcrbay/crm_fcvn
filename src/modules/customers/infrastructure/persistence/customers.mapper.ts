@@ -1,4 +1,4 @@
-import { CustomerEntity } from '../../domain/customers.entity';
+import { CustomerEntity } from '../../domain';
 import { CustomerOrmEntity } from './customers.orm-entity';
 
 export class CustomerMapper {

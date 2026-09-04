@@ -1,7 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { UpdateCustomerUseCase } from './update-customer.use-case';
-import { ICustomersRepository } from '../../domain/customers.repository.interface';
+import { ICustomersRepository } from '../../domain';
 
 describe('UpdateCustomerUseCase', () => {
   const userId = 4;
@@ -23,32 +23,6 @@ describe('UpdateCustomerUseCase', () => {
       detail: string;
     });
 
-  //   it('should update customer and forward updatedById', async () => {
-  //     const repository = buildRepository();
-  //     const updated = {
-  //       id: '1',
-  //       customerCode: 'CUS-001',
-  //       name: 'Alice Updated',
-  //       email: 'alice@example.com',
-  //       phone: '0909123456',
-  //       address: 'HCM',
-  //     } as any;
-  //     repository.update.mockResolvedValue(updated);
-
-  //     const useCase = new UpdateCustomerUseCase(repository);
-  //     const result = await useCase.execute(
-  //       '1',
-  //       { name: 'Alice Updated' } as any,
-  //       userId,
-  //     );
-
-  //     expect(result).toEqual(updated);
-  //     // expect(repository.update).toHaveBeenCalledWith('1', {
-  //     //   name: 'Alice Updated',
-  //     //   updatedById: userId,
-  //     // });
-  //   });
-
   it('should throw NotFoundException when repository returns null', async () => {
     const repository = buildRepository();
     repository.update.mockResolvedValue(null);
@@ -56,7 +30,7 @@ describe('UpdateCustomerUseCase', () => {
     const useCase = new UpdateCustomerUseCase(repository);
 
     await expect(
-      useCase.execute('999', { name: 'Alice' } as any, userId),
+      useCase.execute('999', { name: 'Alice' }, userId),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -67,7 +41,7 @@ describe('UpdateCustomerUseCase', () => {
     const useCase = new UpdateCustomerUseCase(repository);
 
     await expect(
-      useCase.execute('1', { email: 'alice@example.com' } as any, userId),
+      useCase.execute('1', { email: 'alice@example.com' }, userId),
     ).rejects.toThrow(ConflictException);
   });
 
@@ -79,7 +53,7 @@ describe('UpdateCustomerUseCase', () => {
     const useCase = new UpdateCustomerUseCase(repository);
 
     await expect(
-      useCase.execute('1', { name: 'Alice' } as any, userId),
+      useCase.execute('1', { name: 'Alice' }, userId),
     ).rejects.toThrow('DB failure');
   });
 });

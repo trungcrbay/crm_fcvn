@@ -6,12 +6,12 @@ import {
 } from '@nestjs/common';
 import {
   CUSTOMERS_REPOSITORY,
+  CustomerEntity,
   type ICustomersRepository,
-} from '../../domain/customers.repository.interface';
+} from '../../domain';
 
 import { isUniqueConstraintError } from '../../../../shared/helpers';
-import { UpdateCustomerBodyDTO } from '../customers.dto';
-import { CustomerEntity } from '../../domain/customers.entity';
+import { UpdateCustomerCommand } from '../commands/customer.commands';
 
 @Injectable()
 export class UpdateCustomerUseCase {
@@ -22,12 +22,12 @@ export class UpdateCustomerUseCase {
 
   async execute(
     id: string,
-    dto: UpdateCustomerBodyDTO,
+    command: UpdateCustomerCommand,
     userId: number,
   ): Promise<CustomerEntity> {
     try {
       const updated = await this.customersRepository.update(id, {
-        ...dto,
+        ...command,
         updatedById: userId,
       });
 

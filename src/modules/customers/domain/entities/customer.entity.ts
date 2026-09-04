@@ -1,6 +1,8 @@
-import { Email } from './value-objects/email.vo';
-import { PhoneNumber } from './value-objects/phone-number.vo';
-import { CustomerCode } from './value-objects/customer-code.vo';
+//No decorators, no @Column(), no @Injectable(). Just a plain class with behavior.
+// This is intentional — your domain entity should be testable with zero framework setup.
+import { Email } from '../value-objects/email.vo';
+import { PhoneNumber } from '../value-objects/phone-number.vo';
+import { CustomerCode } from '../value-objects/customer-code.vo';
 
 export class CustomerEntity {
   private constructor(

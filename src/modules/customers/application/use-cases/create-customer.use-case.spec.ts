@@ -1,7 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { CreateCustomerUseCase } from './create-customer.use-case';
-import { ICustomersRepository } from '../../domain/customers.repository.interface';
+import { ICustomersRepository } from '../../domain';
 
 describe('CreateCustomerUseCase', () => {
   const userId = 4;
@@ -37,7 +37,7 @@ describe('CreateCustomerUseCase', () => {
           email: 'alice@example.com',
           phone: '0909123456',
           address: 'HCM',
-        } as any,
+        },
         userId,
       ),
     ).rejects.toThrow(ConflictException);
@@ -58,7 +58,7 @@ describe('CreateCustomerUseCase', () => {
           email: 'alice@example.com',
           phone: '0909123456',
           address: 'HCM',
-        } as any,
+        },
         userId,
       ),
     ).rejects.toThrow('DB failure');

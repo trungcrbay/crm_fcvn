@@ -1,9 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CUSTOMERS_REPOSITORY,
+  CustomerEntity,
   type ICustomersRepository,
-} from '../../domain/customers.repository.interface';
-import { CustomerEntity } from '../../domain/customers.entity';
+} from '../../domain';
 
 @Injectable()
 export class FindOneCustomerUseCase {

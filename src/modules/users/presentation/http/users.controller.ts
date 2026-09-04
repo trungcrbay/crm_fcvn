@@ -11,10 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
-import type { PaginatedResult } from '../../shared/repositories/base.repository';
+import type { PaginatedResult } from 'src/shared/repositories/base.repository';
 
-import { User } from './user.entity';
-import { UsersService } from './users.service';
+import {
+  CreateUserUseCase,
+  FindAllUsersUseCase,
+  FindOneUserUseCase,
+  UpdateUserUseCase,
+  RemoveUserUseCase,
+} from '../../application';
 import {
   CreateUserBodyDTO,
   GetUsersResDTO,
@@ -45,6 +50,11 @@ import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 import { SkipThrottle } from '@nestjs/throttler';
+import {
+  UserDetailResponse,
+  UserPublicResponse,
+  UserResponseMapper,
+} from '../mappers/user-response.mapper';
 
 @SkipThrottle()
 @Controller('users')
@@ -52,7 +62,13 @@ import { SkipThrottle } from '@nestjs/throttler';
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly findAllUsersUseCase: FindAllUsersUseCase,
+    private readonly findOneUserUseCase: FindOneUserUseCase,
+    private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly removeUserUseCase: RemoveUserUseCase,
+  ) {}
 
   @Post()
   @ZodSerializerDto(UserPublicDTO)
@@ -61,7 +77,6 @@ export class UsersController {
   @ApiBody({ type: CreateUserBodyDTO })
   @ApiCreatedResponse({
     description: 'Tạo người dùng thành công.',
-    type: User,
   })
   @ApiBadRequestResponse({
     description: 'Dữ liệu đầu vào không hợp lệ.',
@@ -72,11 +87,12 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  create(
+  async create(
     @Body() createUserDto: CreateUserBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<User> {
-    return this.usersService.create(createUserDto, userId);
+  ): Promise<UserPublicResponse> {
+    const entity = await this.createUserUseCase.execute(createUserDto, userId);
+    return UserResponseMapper.toPublic(entity);
   }
 
   @Get()
@@ -86,8 +102,6 @@ export class UsersController {
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách người dùng thành công.',
-    type: User,
-    isArray: true,
   })
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
@@ -98,11 +112,12 @@ export class UsersController {
   @ApiQuery({ name: 'email', required: false, type: String })
   @ApiQuery({ name: 'roleId', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: UserStatus })
-  findAll(
+  async findAll(
     @Query(new ZodValidationPipe(GetUsersQuerySchema))
     query: GetUsersQueryType,
-  ): Promise<User[] | PaginatedResult<User>> {
-    return this.usersService.findAll(query);
+  ): Promise<UserPublicResponse[] | PaginatedResult<UserPublicResponse>> {
+    const result = await this.findAllUsersUseCase.execute(query);
+    return UserResponseMapper.toPaginatedPublicResponse(result);
   }
 
   @Get(':id')
@@ -117,7 +132,6 @@ export class UsersController {
   @ApiResponse({
     status: 200,
     description: 'Lấy thông tin người dùng thành công.',
-    type: User,
   })
   @ApiNotFoundResponse({
     description: 'Không tìm thấy người dùng.',
@@ -125,8 +139,11 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
-    return this.usersService.findOne(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<UserDetailResponse> {
+    const entity = await this.findOneUserUseCase.execute(id);
+    return UserResponseMapper.toDetail(entity);
   }
 
   @Put(':id')
@@ -142,7 +159,6 @@ export class UsersController {
   @ApiResponse({
     status: 200,
     description: 'Cập nhật người dùng thành công.',
-    type: User,
   })
   @ApiBadRequestResponse({
     description: 'Yêu cầu không hợp lệ.',
@@ -153,12 +169,17 @@ export class UsersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<User | null> {
-    return this.usersService.update(id, updateUserDto, userId);
+  ): Promise<UserPublicResponse> {
+    const entity = await this.updateUserUseCase.execute(
+      id,
+      updateUserDto,
+      userId,
+    );
+    return UserResponseMapper.toPublic(entity);
   }
 
   @Delete(':id')
@@ -184,6 +205,6 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
   ) {
-    return this.usersService.remove(id, userId);
+    return this.removeUserUseCase.execute(id, userId);
   }
 }

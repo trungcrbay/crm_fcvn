@@ -1,15 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   CUSTOMERS_REPOSITORY,
+  CustomerEntity,
   type ICustomersRepository,
-} from '../../domain/customers.repository.interface';
+} from '../../domain';
 import { PaginatedResult } from '../../../../shared/repositories/base.repository';
 import { PaginationQueryType } from '../../../../shared/model/request.model';
 import { QueryOptions } from '../../../../shared/model/query.model';
-import {
-  CustomerResponse,
-  CustomerResponseMapper,
-} from '../mappers/customer-response.mapper';
 
 @Injectable()
 export class FindAllCustomersUseCase {
@@ -20,7 +17,7 @@ export class FindAllCustomersUseCase {
 
   async execute(
     query: PaginationQueryType = { page: 1, limit: 10 },
-  ): Promise<CustomerResponse[] | PaginatedResult<CustomerResponse>> {
+  ): Promise<CustomerEntity[] | PaginatedResult<CustomerEntity>> {
     const options: QueryOptions = {
       page: query.page,
       limit: query.limit,
@@ -28,7 +25,6 @@ export class FindAllCustomersUseCase {
       sortOrder: query.sortOrder,
     };
 
-    const result = await this.customersRepository.findAll(options);
-    return CustomerResponseMapper.toPaginatedResponse(result);
+    return await this.customersRepository.findAll(options);
   }
 }

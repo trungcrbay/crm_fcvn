@@ -12,6 +12,9 @@ export const getDatabaseConfig = (
   database: configService.get<string>('DB_DATABASE', 'nestjs_crm'),
   logging: true,
   autoLoadEntities: true,
-  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+  entities: [
+    __dirname + '/../**/*.entity{.ts,.js}',
+    __dirname + '/../**/*.orm-entity{.ts,.js}',
+  ],
   synchronize: false,
 });

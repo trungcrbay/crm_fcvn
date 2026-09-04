@@ -1,16 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CustomersRepository } from './infrastructure/persistence/customers.repository';
-import { CustomersController } from './presentation/customers.controller';
+import { CustomersController } from './presentation';
 import {
   CreateCustomerUseCase,
   FindAllCustomersUseCase,
   FindOneCustomerUseCase,
   UpdateCustomerUseCase,
   RemoveCustomerUseCase,
-} from './application/use-cases';
-import { CUSTOMERS_REPOSITORY } from './domain/customers.repository.interface';
-import { CustomerOrmEntity } from './infrastructure/persistence/customers.orm-entity';
+} from './application';
+import { CUSTOMERS_REPOSITORY } from './domain';
+import {
+  CustomerOrmEntity,
+  CustomersTypeormRepository,
+} from './infrastructure';
 
 @Module({
   imports: [TypeOrmModule.forFeature([CustomerOrmEntity])],
@@ -21,9 +23,11 @@ import { CustomerOrmEntity } from './infrastructure/persistence/customers.orm-en
     FindOneCustomerUseCase,
     UpdateCustomerUseCase,
     RemoveCustomerUseCase,
+    //Nói với NestJS: "Mỗi khi Use-case yêu cầu Token CUSTOMERS_REPOSITORY,
+    //  hãy tạo và tiêm class CustomersTypeormRepository vào cho nó."
     {
       provide: CUSTOMERS_REPOSITORY,
-      useClass: CustomersRepository,
+      useClass: CustomersTypeormRepository,
     },
   ],
   exports: [CUSTOMERS_REPOSITORY],

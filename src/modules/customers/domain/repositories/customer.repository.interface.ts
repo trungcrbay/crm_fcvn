@@ -1,6 +1,8 @@
-import { PaginatedResult } from '../../../shared/repositories/base.repository';
-import { QueryOptions } from '../../../shared/model/query.model';
-import { CustomerEntity } from './customers.entity';
+//This is your port. The domain defines what it needs; infrastructure provides it.
+
+import { QueryOptions } from 'src/shared/model/query.model';
+import { CustomerEntity } from '../entities/customer.entity';
+import { PaginatedResult } from 'src/shared/repositories/base.repository';
 
 /** DI token - dùng để inject implementation cụ thể ở module */
 export const CUSTOMERS_REPOSITORY = Symbol('CUSTOMERS_REPOSITORY');
@@ -25,7 +27,6 @@ export interface UpdateCustomerData {
 
 /**
  * Port - domain định nghĩa "cần gì" từ persistence,
- * không quan tâm implement bằng TypeORM, Prisma hay Mongo.
  */
 export interface ICustomersRepository {
   create(data: CreateCustomerData): Promise<CustomerEntity>;

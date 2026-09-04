@@ -1,161 +1,59 @@
+import { Injectable } from '@nestjs/common';
 import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { PaginatedResult } from '../../shared/repositories/base.repository';
-import { UsersRepository } from './users.repository';
-import { User } from './user.entity';
-import { QueryOptions } from 'src/shared/model/query.model';
-import { CreateUserBodyDTO, UpdateUserBodyDTO } from './user.dto';
-import { isUniqueConstraintError } from 'src/shared/helpers';
-import { HashingService } from 'src/shared/services/hashing.service';
-import { Like } from 'typeorm';
-import { GetUsersQueryType } from './user.model';
+  CreateUserUseCase,
+  FindAllUsersUseCase,
+  FindOneUserUseCase,
+  UpdateUserUseCase,
+  RemoveUserUseCase,
+} from './application';
+import {
+  CreateUserBodyDTO,
+  UpdateUserBodyDTO,
+} from './presentation/http/user.dto';
+import { GetUsersQueryType } from './presentation/http/user.model';
+import { UserEntity } from './domain';
+import { PaginatedResult } from 'src/shared/repositories/base.repository';
 
+/**
+ * Facade Service giữ nguyên để tương thích ngược cho bất kỳ module nào
+ * đang inject UsersService trực tiếp.
+ */
 @Injectable()
 export class UsersService {
   constructor(
-    private readonly usersRepository: UsersRepository,
-    private hashingService: HashingService,
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly findAllUsersUseCase: FindAllUsersUseCase,
+    private readonly findOneUserUseCase: FindOneUserUseCase,
+    private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly removeUserUseCase: RemoveUserUseCase,
   ) {}
 
   async create(
     createUserDto: CreateUserBodyDTO,
     userId: number,
-  ): Promise<User> {
-    try {
-      const hashedPassword = await this.hashingService.hash(
-        createUserDto.password,
-      );
-
-      const payload: Partial<User> = {
-        name: createUserDto.name,
-        userCode: createUserDto.userCode,
-        password: hashedPassword,
-        status: createUserDto.status,
-        email: createUserDto.email,
-        phone: createUserDto.phone,
-        address: createUserDto.address,
-        createdById: userId,
-      };
-
-      if (createUserDto.roleId !== undefined) {
-        payload.roleId = createUserDto.roleId;
-      }
-
-      if (createUserDto.departmentId !== undefined) {
-        payload.departmentId = createUserDto.departmentId;
-      }
-
-      const createdUser = await this.usersRepository.create(payload);
-      const { password: _password, ...userWithoutPassword } = createdUser;
-      void _password;
-
-      return userWithoutPassword as User;
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new ConflictException('Mã, email hoặc số điện thoại đã tồn tại');
-      }
-
-      throw error;
-    }
+  ): Promise<UserEntity> {
+    return this.createUserUseCase.execute(createUserDto, userId);
   }
 
   async findAll(
     query: GetUsersQueryType = { page: 1, limit: 10, sortOrder: 'ASC' },
-  ): Promise<User[] | PaginatedResult<User>> {
-    const where: QueryOptions<User>['where'] = {};
-
-    if (query.userCode) {
-      where.userCode = Like(`%${query.userCode.trim()}%`);
-    }
-
-    if (query.name) {
-      where.name = Like(`%${query.name.trim()}%`);
-    }
-
-    if (query.email) {
-      where.email = Like(`%${query.email.trim().toLowerCase()}%`);
-    }
-
-    if (query.roleId) {
-      where.roleId = query.roleId;
-    }
-
-    if (query.departmentId) {
-      where.departmentId = query.departmentId;
-    }
-
-    if (query.status) {
-      where.status = query.status;
-    }
-
-    const options: QueryOptions = {
-      page: query.page,
-      limit: query.limit,
-      search: query.name ? undefined : query.search,
-      sortOrder: query.sortOrder,
-      where,
-      relations: {
-        department: true,
-        role: true,
-      },
-    };
-
-    return this.usersRepository.findAll(options);
+  ): Promise<UserEntity[] | PaginatedResult<UserEntity>> {
+    return this.findAllUsersUseCase.execute(query);
   }
 
-  async findOne(id: number): Promise<User> {
-    const user = await this.usersRepository.findOne(id, {
-      department: true,
-      role: true,
-    });
-
-    if (!user) {
-      throw new NotFoundException('Không tìm thấy người dùng');
-    }
-
-    return user;
+  async findOne(id: number): Promise<UserEntity> {
+    return this.findOneUserUseCase.execute(id);
   }
 
   async update(
     id: number,
     updateUserDto: UpdateUserBodyDTO,
     userId: number,
-  ): Promise<User> {
-    const payload: Partial<User> = {
-      name: updateUserDto.name,
-      userCode: updateUserDto.userCode,
-      email: updateUserDto.email,
-      phone: updateUserDto.phone,
-      address: updateUserDto.address,
-      status: updateUserDto.status,
-      updatedById: userId,
-    };
-
-    if (updateUserDto.roleId !== undefined) {
-      payload.roleId = updateUserDto.roleId;
-    }
-
-    if (updateUserDto.departmentId !== undefined) {
-      payload.departmentId = updateUserDto.departmentId;
-    }
-
-    const user = await this.usersRepository.update(id, payload);
-
-    if (!user) {
-      throw new NotFoundException('Không tìm thấy người dùng');
-    }
-
-    return user;
+  ): Promise<UserEntity> {
+    return this.updateUserUseCase.execute(id, updateUserDto, userId);
   }
 
-  async remove(id: number, userId: number) {
-    await this.findOne(id);
-    await this.usersRepository.remove(id, userId);
-    return {
-      message: 'Xóa người dùng thành công',
-    };
+  async remove(id: number, userId: number): Promise<{ message: string }> {
+    return this.removeUserUseCase.execute(id, userId);
   }
 }

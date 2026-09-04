@@ -3,13 +3,10 @@ import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { isUniqueConstraintError } from '../../../../shared/helpers';
 import {
   CUSTOMERS_REPOSITORY,
+  CustomerEntity,
   type ICustomersRepository,
-} from '../../domain/customers.repository.interface';
-import { CreateCustomerBodyDTO } from '../customers.dto';
-import {
-  CustomerResponse,
-  CustomerResponseMapper,
-} from '../mappers/customer-response.mapper';
+} from '../../domain';
+import { CreateCustomerCommand } from '../commands/customer.commands';
 
 @Injectable()
 export class CreateCustomerUseCase {
@@ -19,13 +16,13 @@ export class CreateCustomerUseCase {
   ) {}
 
   async execute(
-    dto: CreateCustomerBodyDTO,
+    command: CreateCustomerCommand,
     userId: number,
-  ): Promise<CustomerResponse> {
-    const { customerCode, name, email, phone, address } = dto;
+  ): Promise<CustomerEntity> {
+    const { customerCode, name, email, phone, address } = command;
 
     try {
-      const entity = await this.customersRepository.create({
+      return await this.customersRepository.create({
         customerCode: customerCode?.trim(),
         name: name?.trim(),
         email: email?.trim().toLowerCase(),
@@ -33,7 +30,6 @@ export class CreateCustomerUseCase {
         address: address?.trim(),
         createdById: userId,
       });
-      return CustomerResponseMapper.toResponse(entity);
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('Mã hoặc email khách hàng đã tồn tại');
