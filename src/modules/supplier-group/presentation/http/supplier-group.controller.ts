@@ -10,7 +10,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { SupplierGroupService } from './supplier-group.service';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -29,6 +28,7 @@ import { Permission } from 'src/shared/constant/permission.constant';
 import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { Permissions } from 'src/shared/decorator/permissions.decorator';
 import {
+  AssignSuppliersToGroupBodyDTO,
   ChangeStatusSupplierGroupBodyDTO,
   CreateSupplierGroupBodyDTO,
   GetSupplierGroupsResDTO,
@@ -38,7 +38,6 @@ import {
   GetSupplierGroupsQuerySchema,
   type GetSupplierGroupsQueryType,
 } from './supplier-group.model';
-import { SupplierGroup } from './supplier-group.entity';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { PaginationQueryDTO } from 'src/shared/dto/request.dto';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
@@ -46,6 +45,19 @@ import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
 import { SkipThrottle } from '@nestjs/throttler';
 import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant';
+import {
+  AssignSuppliersToGroupUseCase,
+  ChangeStatusSupplierGroupUseCase,
+  CreateSupplierGroupUseCase,
+  FindAllSupplierGroupsUseCase,
+  FindOneSupplierGroupUseCase,
+  RemoveSupplierGroupUseCase,
+  UpdateSupplierGroupUseCase,
+} from '../../application';
+import {
+  SupplierGroupResponse,
+  SupplierGroupResponseMapper,
+} from '../mappers/supplier-group-response.mapper';
 
 @SkipThrottle()
 @Controller('supplier-groups')
@@ -53,7 +65,15 @@ import { SupplierGroupStatus } from 'src/shared/constant/supplier-group.constant
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
 export class SupplierGroupController {
-  constructor(private readonly supplierGroupService: SupplierGroupService) {}
+  constructor(
+    private readonly createSupplierGroupUseCase: CreateSupplierGroupUseCase,
+    private readonly findAllSupplierGroupsUseCase: FindAllSupplierGroupsUseCase,
+    private readonly findOneSupplierGroupUseCase: FindOneSupplierGroupUseCase,
+    private readonly updateSupplierGroupUseCase: UpdateSupplierGroupUseCase,
+    private readonly changeStatusSupplierGroupUseCase: ChangeStatusSupplierGroupUseCase,
+    private readonly assignSuppliersToGroupUseCase: AssignSuppliersToGroupUseCase,
+    private readonly removeSupplierGroupUseCase: RemoveSupplierGroupUseCase,
+  ) {}
 
   @Post()
   @Permissions([
@@ -64,7 +84,6 @@ export class SupplierGroupController {
   @ApiBody({ type: CreateSupplierGroupBodyDTO })
   @ApiCreatedResponse({
     description: 'Tạo mới nhóm nhà cung cấp thành công.',
-    type: SupplierGroup,
   })
   @ApiConflictResponse({
     description: 'Thông tin nhà cung cấp đã tồn tại.',
@@ -74,11 +93,15 @@ export class SupplierGroupController {
     description: 'Bạn không có quyền thực hiện hành động này.',
     type: CreateSupplierGroupBodyDTO,
   })
-  create(
+  async create(
     @Body() createSupplierGroupDto: CreateSupplierGroupBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<SupplierGroup> {
-    return this.supplierGroupService.create(createSupplierGroupDto, userId);
+  ): Promise<SupplierGroupResponse> {
+    const group = await this.createSupplierGroupUseCase.execute(
+      createSupplierGroupDto,
+      userId,
+    );
+    return SupplierGroupResponseMapper.toResponse(group);
   }
 
   @Get()
@@ -95,17 +118,17 @@ export class SupplierGroupController {
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách nhóm nhà cung cấp thành công.',
-    type: SupplierGroup,
     isArray: true,
   })
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findAll(
+  async findAll(
     @Query(new ZodValidationPipe(GetSupplierGroupsQuerySchema))
     query: GetSupplierGroupsQueryType,
-  ): Promise<SupplierGroup[] | PaginatedResult<SupplierGroup>> {
-    return this.supplierGroupService.findAll(query);
+  ): Promise<SupplierGroupResponse[] | PaginatedResult<SupplierGroupResponse>> {
+    const result = await this.findAllSupplierGroupsUseCase.execute(query);
+    return SupplierGroupResponseMapper.toPaginatedResponse(result);
   }
 
   @Get(':id')
@@ -125,10 +148,11 @@ export class SupplierGroupController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(
+  async findOne(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<SupplierGroup | null> {
-    return this.supplierGroupService.findOne(id);
+  ): Promise<SupplierGroupResponse> {
+    const group = await this.findOneSupplierGroupUseCase.execute(id);
+    return SupplierGroupResponseMapper.toResponse(group);
   }
 
   @Put(':id')
@@ -149,12 +173,17 @@ export class SupplierGroupController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateSupplierGroupDto: UpdateSupplierGroupBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<SupplierGroup | null> {
-    return this.supplierGroupService.update(id, updateSupplierGroupDto, userId);
+  ): Promise<SupplierGroupResponse> {
+    const group = await this.updateSupplierGroupUseCase.execute(
+      id,
+      updateSupplierGroupDto,
+      userId,
+    );
+    return SupplierGroupResponseMapper.toResponse(group);
   }
 
   @Put('/change-status/:id')
@@ -175,14 +204,46 @@ export class SupplierGroupController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
-  changeStatus(
+  async changeStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() changeStatusDto: ChangeStatusSupplierGroupBodyDTO,
     @ActiveUser('userId') userId: number,
   ) {
-    return this.supplierGroupService.changeStatus(
+    return await this.changeStatusSupplierGroupUseCase.execute(
       id,
       changeStatusDto.status,
+      userId,
+    );
+  }
+
+  @Post('/assign-suppliers/:id')
+  @Permissions([
+    Permission.SUPPLIER_GROUP_MANAGE,
+    Permission.SUPPLIER_GROUP_UPDATE,
+  ])
+  @ApiOperation({ summary: 'Gán nhà cung cấp vào nhóm' })
+  @ApiBody({ type: AssignSuppliersToGroupBodyDTO })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của nhóm nhà cung cấp',
+    example: '12',
+  })
+  @ApiBadRequestResponse({
+    description: 'Yêu cầu không hợp lệ.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Không tìm thấy nhóm nhà cung cấp.',
+  })
+  async assignSuppliers(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: AssignSuppliersToGroupBodyDTO,
+    @ActiveUser('userId') userId: number,
+  ) {
+    return await this.assignSuppliersToGroupUseCase.execute(
+      {
+        groupId: id,
+        supplierIds: body.supplierIds,
+      },
       userId,
     );
   }
@@ -202,10 +263,10 @@ export class SupplierGroupController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhóm nhà cung cấp.',
   })
-  remove(
+  async remove(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
   ) {
-    return this.supplierGroupService.remove(id, userId);
+    return await this.removeSupplierGroupUseCase.execute(id, userId);
   }
 }

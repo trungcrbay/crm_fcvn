@@ -1,14 +1,41 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { AuthRepository } from './auth.repository';
-import { User } from '../users/user.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RefreshToken } from 'src/modules/refresh-token/refresh-token.entity';
+import { User } from '../users/user.entity';
+import { RefreshToken } from '../refresh-token/refresh-token.entity';
+import { AuthController } from './presentation';
+import {
+  LoginUseCase,
+  LogoutUseCase,
+  RefreshTokenUseCase,
+  TokenGeneratorService,
+} from './application';
+import { AUTH_REPOSITORY } from './domain';
+import { AuthTypeormRepository } from './infrastructure';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, RefreshToken])],
   controllers: [AuthController],
-  providers: [AuthService, AuthRepository],
+  providers: [
+    TokenGeneratorService,
+    LoginUseCase,
+    RefreshTokenUseCase,
+    LogoutUseCase,
+    {
+      provide: AUTH_REPOSITORY,
+      useClass: AuthTypeormRepository,
+    },
+    {
+      provide: AuthTypeormRepository,
+      useExisting: AUTH_REPOSITORY,
+    },
+  ],
+  exports: [
+    AUTH_REPOSITORY,
+    AuthTypeormRepository,
+    TokenGeneratorService,
+    LoginUseCase,
+    RefreshTokenUseCase,
+    LogoutUseCase,
+  ],
 })
 export class AuthModule {}

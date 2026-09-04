@@ -10,7 +10,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { SupplierService } from './suppliers.service';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -30,7 +29,6 @@ import { Permission } from 'src/shared/constant/permission.constant';
 import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
 import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
-import { Supplier } from './supplier.entity';
 import {
   ChangeStatusSupplierBodyDTO,
   CreateSupplierBodyDTO,
@@ -46,6 +44,18 @@ import { PermissionGuard } from 'src/shared/guard/permission.guard';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 import { SkipThrottle } from '@nestjs/throttler';
 import { SupplierStatus } from 'src/shared/constant/supplier.constant';
+import {
+  CreateSupplierUseCase,
+  DeactivateSupplierUseCase,
+  FindAllSuppliersUseCase,
+  FindOneSupplierUseCase,
+  RemoveSupplierUseCase,
+  UpdateSupplierUseCase,
+} from '../../application';
+import {
+  SupplierResponse,
+  SupplierResponseMapper,
+} from '../mappers/supplier-response.mapper';
 
 @SkipThrottle()
 @Controller('suppliers')
@@ -53,7 +63,14 @@ import { SupplierStatus } from 'src/shared/constant/supplier.constant';
 @ApiBearerAuth()
 @UseGuards(PermissionGuard)
 export class SupplierController {
-  constructor(private readonly supplierService: SupplierService) {}
+  constructor(
+    private readonly createSupplierUseCase: CreateSupplierUseCase,
+    private readonly findAllSuppliersUseCase: FindAllSuppliersUseCase,
+    private readonly findOneSupplierUseCase: FindOneSupplierUseCase,
+    private readonly updateSupplierUseCase: UpdateSupplierUseCase,
+    private readonly deactivateSupplierUseCase: DeactivateSupplierUseCase,
+    private readonly removeSupplierUseCase: RemoveSupplierUseCase,
+  ) {}
 
   @Post()
   @Permissions([Permission.SUPPLIER_MANAGE, Permission.SUPPLIER_CREATE])
@@ -61,7 +78,6 @@ export class SupplierController {
   @ApiBody({ type: CreateSupplierBodyDTO })
   @ApiCreatedResponse({
     description: 'Tạo mới nhà cung cấp thành công.',
-    type: Supplier,
   })
   @ApiConflictResponse({
     description: 'Thông tin nhà cung cấp đã tồn tại.',
@@ -71,11 +87,15 @@ export class SupplierController {
     description: 'Bạn không có quyền thực hiện hành động này.',
     type: CreateSupplierBodyDTO,
   })
-  create(
+  async create(
     @Body() createSupplierDto: CreateSupplierBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<Supplier> {
-    return this.supplierService.create(createSupplierDto, userId);
+  ): Promise<SupplierResponse> {
+    const supplier = await this.createSupplierUseCase.execute(
+      createSupplierDto,
+      userId,
+    );
+    return SupplierResponseMapper.toResponse(supplier);
   }
 
   @Get()
@@ -85,7 +105,6 @@ export class SupplierController {
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách nhà cung cấp thành công.',
-    type: Supplier,
     isArray: true,
   })
   @ApiForbiddenResponse({
@@ -97,11 +116,12 @@ export class SupplierController {
   @ApiQuery({ name: 'email', required: false, type: String })
   @ApiQuery({ name: 'supplierGroupId', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: SupplierStatus })
-  findAll(
+  async findAll(
     @Query(new ZodValidationPipe(GetSuppliersQuerySchema))
     query: GetSuppliersQueryType,
-  ): Promise<Supplier[] | PaginatedResult<Supplier>> {
-    return this.supplierService.findAll(query);
+  ): Promise<SupplierResponse[] | PaginatedResult<SupplierResponse>> {
+    const result = await this.findAllSuppliersUseCase.execute(query);
+    return SupplierResponseMapper.toPaginatedResponse(result);
   }
 
   @Get(':id')
@@ -118,8 +138,11 @@ export class SupplierController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<Supplier | null> {
-    return this.supplierService.findOne(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<SupplierResponse> {
+    const supplier = await this.findOneSupplierUseCase.execute(id);
+    return SupplierResponseMapper.toResponse(supplier);
   }
 
   @Put(':id')
@@ -137,12 +160,17 @@ export class SupplierController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhà cung cấp.',
   })
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateSupplierDto: UpdateSupplierBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<Supplier | null> {
-    return this.supplierService.update(id, updateSupplierDto, userId);
+  ): Promise<SupplierResponse> {
+    const supplier = await this.updateSupplierUseCase.execute(
+      id,
+      updateSupplierDto,
+      userId,
+    );
+    return SupplierResponseMapper.toResponse(supplier);
   }
 
   @Put('deactivate/:id')
@@ -160,11 +188,12 @@ export class SupplierController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhà cung cấp.',
   })
-  deactivate(
+  async deactivate(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
-  ): Promise<Supplier | null> {
-    return this.supplierService.deactivate(id, userId);
+  ): Promise<SupplierResponse> {
+    const supplier = await this.deactivateSupplierUseCase.execute(id, userId);
+    return SupplierResponseMapper.toResponse(supplier);
   }
 
   @Delete(':id')
@@ -179,10 +208,10 @@ export class SupplierController {
   @ApiNotFoundResponse({
     description: 'Không tìm thấy nhà cung cấp.',
   })
-  remove(
+  async remove(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
   ) {
-    return this.supplierService.remove(id, userId);
+    return await this.removeSupplierUseCase.execute(id, userId);
   }
 }

@@ -1,6 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ZodSerializerDto } from 'nestjs-zod';
-import { AuthService } from './auth.service';
 import {
   LoginBodyDTO,
   LoginResDTO,
@@ -19,11 +18,20 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import {
+  LoginUseCase,
+  LogoutUseCase,
+  RefreshTokenUseCase,
+} from '../../application';
 
 @Controller('auth')
 @ApiTags('Auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly loginUseCase: LoginUseCase,
+    private readonly refreshTokenUseCase: RefreshTokenUseCase,
+    private readonly logoutUseCase: LogoutUseCase,
+  ) {}
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Public()
@@ -50,8 +58,8 @@ export class AuthController {
     description:
       'Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được phân quyền.',
   })
-  login(@Body() body: LoginBodyDTO): Promise<LoginResType> {
-    return this.authService.login({ ...body });
+  async login(@Body() body: LoginBodyDTO): Promise<LoginResType> {
+    return await this.loginUseCase.execute(body);
   }
 
   @Public()
@@ -73,8 +81,8 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Refresh token không hợp lệ hoặc đã hết hạn.',
   })
-  refreshToken(@Body() body: RefreshTokenBodyDTO): Promise<LoginResType> {
-    return this.authService.refreshToken({ ...body });
+  async refreshToken(@Body() body: RefreshTokenBodyDTO): Promise<LoginResType> {
+    return await this.refreshTokenUseCase.execute(body);
   }
 
   @Public()
@@ -96,7 +104,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Refresh token không hợp lệ.',
   })
-  logout(@Body() body: LogoutBodyDTO) {
-    return this.authService.logout(body.refreshToken);
+  async logout(@Body() body: LogoutBodyDTO) {
+    return await this.logoutUseCase.execute(body);
   }
 }

@@ -1,20 +1,52 @@
 import { Module } from '@nestjs/common';
-import { SupplierGroupService } from './supplier-group.service';
-import { SupplierGroupController } from './supplier-group.controller';
-import { SupplierGroupsRepository } from './supplier-group.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { SupplierGroup } from './supplier-group.entity';
-import { SuppliersRepository } from '../supplier/suppliers.repository';
-import { Supplier } from '../supplier/supplier.entity';
+import { SupplierGroupController } from './presentation';
+import {
+  AssignSuppliersToGroupUseCase,
+  ChangeStatusSupplierGroupUseCase,
+  CreateSupplierGroupUseCase,
+  FindAllSupplierGroupsUseCase,
+  FindOneSupplierGroupUseCase,
+  RemoveSupplierGroupUseCase,
+  UpdateSupplierGroupUseCase,
+} from './application';
+import { SUPPLIER_GROUPS_REPOSITORY } from './domain';
+import {
+  SupplierGroupOrmEntity,
+  SupplierGroupsTypeormRepository,
+} from './infrastructure';
+import { SupplierModule } from '../supplier/suppliers.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SupplierGroup, Supplier])],
-
+  imports: [TypeOrmModule.forFeature([SupplierGroupOrmEntity]), SupplierModule],
   controllers: [SupplierGroupController],
   providers: [
-    SupplierGroupService,
-    SupplierGroupsRepository,
-    SuppliersRepository,
+    CreateSupplierGroupUseCase,
+    FindAllSupplierGroupsUseCase,
+    FindOneSupplierGroupUseCase,
+    UpdateSupplierGroupUseCase,
+    ChangeStatusSupplierGroupUseCase,
+    AssignSuppliersToGroupUseCase,
+    RemoveSupplierGroupUseCase,
+    {
+      provide: SUPPLIER_GROUPS_REPOSITORY,
+      useClass: SupplierGroupsTypeormRepository,
+    },
+    {
+      provide: SupplierGroupsTypeormRepository,
+      useExisting: SUPPLIER_GROUPS_REPOSITORY,
+    },
+  ],
+  exports: [
+    SUPPLIER_GROUPS_REPOSITORY,
+    SupplierGroupsTypeormRepository,
+    CreateSupplierGroupUseCase,
+    FindAllSupplierGroupsUseCase,
+    FindOneSupplierGroupUseCase,
+    UpdateSupplierGroupUseCase,
+    ChangeStatusSupplierGroupUseCase,
+    AssignSuppliersToGroupUseCase,
+    RemoveSupplierGroupUseCase,
   ],
 })
 export class SupplierGroupModule {}
