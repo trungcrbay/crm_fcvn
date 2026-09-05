@@ -41,11 +41,20 @@ import {
 } from './purchase-request.dto';
 import {
   GetPurchaseRequestsQuerySchema,
+  PurchaseRequestHistoryType,
+  PurchaseRequestType,
   type GetPurchaseRequestsQueryType,
 } from './purchase-request.model';
-import { PurchaseRequest } from './purchase-request.entity';
-import { PurchaseRequestHistory } from './purchase-request-history.entity';
-import { PurchaseRequestService } from './purchase-request.service';
+import { CreatePurchaseRequestUseCase } from '../../application/use-cases/create-purchase-request.use-case';
+import { UpdatePurchaseRequestUseCase } from '../../application/use-cases/update-purchase-request.use-case';
+import { RemovePurchaseRequestUseCase } from '../../application/use-cases/remove-purchase-request.use-case';
+import { SubmitPurchaseRequestUseCase } from '../../application/use-cases/submit-purchase-request.use-case';
+import { ApprovePurchaseRequestUseCase } from '../../application/use-cases/approve-purchase-request.use-case';
+import { RejectPurchaseRequestUseCase } from '../../application/use-cases/reject-purchase-request.use-case';
+import { FindAllPurchaseRequestsUseCase } from '../../application/use-cases/find-all-purchase-requests.use-case';
+import { FindOnePurchaseRequestUseCase } from '../../application/use-cases/find-one-purchase-request.use-case';
+import { GetPurchaseRequestHistoryUseCase } from '../../application/use-cases/get-purchase-request-history.use-case';
+import { PurchaseRequestResponseMapper } from '../mappers/purchase-request-response.mapper';
 
 @SkipThrottle()
 @Controller('purchase-requests')
@@ -54,7 +63,15 @@ import { PurchaseRequestService } from './purchase-request.service';
 @UseGuards(PermissionGuard)
 export class PurchaseRequestController {
   constructor(
-    private readonly purchaseRequestService: PurchaseRequestService,
+    private readonly createPurchaseRequestUseCase: CreatePurchaseRequestUseCase,
+    private readonly updatePurchaseRequestUseCase: UpdatePurchaseRequestUseCase,
+    private readonly removePurchaseRequestUseCase: RemovePurchaseRequestUseCase,
+    private readonly submitPurchaseRequestUseCase: SubmitPurchaseRequestUseCase,
+    private readonly approvePurchaseRequestUseCase: ApprovePurchaseRequestUseCase,
+    private readonly rejectPurchaseRequestUseCase: RejectPurchaseRequestUseCase,
+    private readonly findAllPurchaseRequestsUseCase: FindAllPurchaseRequestsUseCase,
+    private readonly findOnePurchaseRequestUseCase: FindOnePurchaseRequestUseCase,
+    private readonly getPurchaseRequestHistoryUseCase: GetPurchaseRequestHistoryUseCase,
   ) {}
 
   @Post()
@@ -72,8 +89,9 @@ export class PurchaseRequestController {
   async create(
     @Body() dto: CreatePurchaseRequestBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<PurchaseRequest> {
-    return this.purchaseRequestService.create(dto, userId);
+  ): Promise<PurchaseRequestType> {
+    const entity = await this.createPurchaseRequestUseCase.execute(dto, userId);
+    return PurchaseRequestResponseMapper.toResponse(entity);
   }
 
   @Get()
@@ -95,8 +113,14 @@ export class PurchaseRequestController {
   async findAll(
     @Query(new ZodValidationPipe(GetPurchaseRequestsQuerySchema))
     query: GetPurchaseRequestsQueryType,
-  ): Promise<PaginatedResult<PurchaseRequest>> {
-    return this.purchaseRequestService.findAll(query);
+  ): Promise<PaginatedResult<PurchaseRequestType>> {
+    const result = await this.findAllPurchaseRequestsUseCase.execute(query);
+    return {
+      data: result.data.map((item) =>
+        PurchaseRequestResponseMapper.toResponse(item),
+      ),
+      meta: result.meta,
+    };
   }
 
   @Get(':id')
@@ -114,8 +138,9 @@ export class PurchaseRequestController {
   @ZodSerializerDto(PurchaseRequestResDTO)
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<PurchaseRequest> {
-    return this.purchaseRequestService.findOne(id);
+  ): Promise<PurchaseRequestType> {
+    const entity = await this.findOnePurchaseRequestUseCase.execute(id);
+    return PurchaseRequestResponseMapper.toResponse(entity);
   }
 
   @Put(':id')
@@ -138,8 +163,13 @@ export class PurchaseRequestController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePurchaseRequestBodyDTO,
     @ActiveUser('userId') userId: number,
-  ): Promise<PurchaseRequest> {
-    return this.purchaseRequestService.update(id, dto, userId);
+  ): Promise<PurchaseRequestType> {
+    const entity = await this.updatePurchaseRequestUseCase.execute(
+      id,
+      dto,
+      userId,
+    );
+    return PurchaseRequestResponseMapper.toResponse(entity);
   }
 
   @Delete(':id')
@@ -161,7 +191,7 @@ export class PurchaseRequestController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
   ): Promise<{ message: string }> {
-    return this.purchaseRequestService.remove(id, userId);
+    return this.removePurchaseRequestUseCase.execute(id, userId);
   }
 
   @Post(':id/submit')
@@ -182,8 +212,9 @@ export class PurchaseRequestController {
   async submit(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
-  ): Promise<PurchaseRequest> {
-    return this.purchaseRequestService.submit(id, userId);
+  ): Promise<PurchaseRequestType> {
+    const entity = await this.submitPurchaseRequestUseCase.execute(id, userId);
+    return PurchaseRequestResponseMapper.toResponse(entity);
   }
 
   @Post(':id/approve')
@@ -207,13 +238,14 @@ export class PurchaseRequestController {
     @ActiveUser('userId') userId: number,
     @ActiveUser('departmentId') departmentId: number,
     @ActiveUserPermissions() permissions: Permission[],
-  ): Promise<PurchaseRequest> {
-    return this.purchaseRequestService.approve(
+  ): Promise<PurchaseRequestType> {
+    const entity = await this.approvePurchaseRequestUseCase.execute(
       id,
       userId,
       departmentId,
       permissions,
     );
+    return PurchaseRequestResponseMapper.toResponse(entity);
   }
 
   @Post(':id/reject')
@@ -239,14 +271,15 @@ export class PurchaseRequestController {
     @ActiveUser('userId') userId: number,
     @ActiveUser('departmentId') departmentId: number,
     @ActiveUserPermissions() permissions: Permission[],
-  ): Promise<PurchaseRequest> {
-    return this.purchaseRequestService.reject(
+  ): Promise<PurchaseRequestType> {
+    const entity = await this.rejectPurchaseRequestUseCase.execute(
       id,
       dto,
       userId,
       departmentId,
       permissions,
     );
+    return PurchaseRequestResponseMapper.toResponse(entity);
   }
 
   @Get(':id/history')
@@ -266,7 +299,10 @@ export class PurchaseRequestController {
   @ZodSerializerDto(PurchaseRequestHistoriesResDTO)
   async getHistory(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<PurchaseRequestHistory[]> {
-    return this.purchaseRequestService.getHistory(id);
+  ): Promise<PurchaseRequestHistoryType[]> {
+    const histories = await this.getPurchaseRequestHistoryUseCase.execute(id);
+    return histories.map((h) =>
+      PurchaseRequestResponseMapper.toHistoryResponse(h),
+    );
   }
 }

@@ -1,63 +1,68 @@
 import {
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
-  DataSource,
   Between,
+  DataSource,
   FindOptionsWhere,
   ILike,
   LessThanOrEqual,
   MoreThanOrEqual,
 } from 'typeorm';
-import { PurchaseRequest } from './purchase-request.entity';
-import { PurchaseRequestItem } from './purchase-request-item.entity';
-import { PurchaseRequestHistory } from './purchase-request-history.entity';
+import { PaginatedResult } from 'src/shared/repositories/base.repository';
 import {
   PurchaseRequestAction,
   PurchaseRequestStatus,
 } from 'src/shared/constant/purchase-request.constant';
 import {
-  CreatePurchaseRequestBodyDTO,
-  GetPurchaseRequestsQueryDTO,
-  RejectPurchaseRequestBodyDTO,
-  UpdatePurchaseRequestBodyDTO,
-} from './purchase-request.dto';
-import { generatePurchaseRequestCode } from 'src/shared/utils';
-import { PaginatedResult } from 'src/shared/repositories/base.repository';
-import { Permission } from 'src/shared/constant/permission.constant';
+  CreatePurchaseRequestData,
+  IPurchaseRequestsRepository,
+  PurchaseRequestQueryFilter,
+  UpdatePurchaseRequestData,
+} from '../../domain/repositories/purchase-request.repository.interface';
+import { PurchaseRequestEntity } from '../../domain/entities/purchase-request.entity';
+import { PurchaseRequestHistoryEntity } from '../../domain/entities/purchase-request-history.entity';
+import { PurchaseRequestOrmEntity } from './purchase-request.orm-entity';
+import { PurchaseRequestItemOrmEntity } from './purchase-request-item.orm-entity';
+import { PurchaseRequestHistoryOrmEntity } from './purchase-request-history.orm-entity';
+import { PurchaseRequestMapper } from './purchase-request.mapper';
 
 @Injectable()
-export class PurchaseRequestService {
+export class PurchaseRequestsTypeOrmRepository implements IPurchaseRequestsRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   async create(
-    dto: CreatePurchaseRequestBodyDTO,
+    data: CreatePurchaseRequestData,
+    code: string,
     userId: number,
-  ): Promise<PurchaseRequest> {
-    if (!dto.items?.length) {
+  ): Promise<PurchaseRequestEntity> {
+    if (!data.items?.length) {
       throw new ConflictException(
         'Đề nghị mua hàng phải có ít nhất một sản phẩm',
       );
     }
 
     return this.dataSource.transaction(async (manager) => {
-      const prRepository = manager.getRepository(PurchaseRequest);
-      const itemRepository = manager.getRepository(PurchaseRequestItem);
-      const historyRepository = manager.getRepository(PurchaseRequestHistory);
+      const prRepository = manager.getRepository(PurchaseRequestOrmEntity);
+      const itemRepository = manager.getRepository(
+        PurchaseRequestItemOrmEntity,
+      );
+      const historyRepository = manager.getRepository(
+        PurchaseRequestHistoryOrmEntity,
+      );
 
-      const totalAmount = dto.items.reduce(
+      const totalAmount = data.items.reduce(
         (sum, item) => sum + Number(item.quantity) * Number(item.price),
         0,
       );
 
       const purchaseRequest = prRepository.create({
-        code: generatePurchaseRequestCode(),
-        title: dto.title,
-        description: dto.description,
-        departmentId: dto.departmentId,
+        code,
+        title: data.title,
+        description: data.description ?? undefined,
+        departmentId: data.departmentId ?? undefined,
         status: PurchaseRequestStatus.DRAFT,
         totalAmount,
         createdById: userId,
@@ -66,21 +71,21 @@ export class PurchaseRequestService {
 
       const savedPurchaseRequest = await prRepository.save(purchaseRequest);
 
-      const items = dto.items.map((item) =>
+      const items = data.items.map((item) =>
         itemRepository.create({
           purchaseRequestId: savedPurchaseRequest.id,
           itemName: item.itemName,
-          unit: item.unit,
+          unit: item.unit ?? undefined,
           quantity: item.quantity,
           price: item.price,
           amount: Number(item.quantity) * Number(item.price),
-          note: item.note,
+          note: item.note ?? undefined,
           createdById: userId,
           updatedById: userId,
         }),
       );
 
-      await itemRepository.save(items);
+      const savedItems = await itemRepository.save(items);
 
       const history = historyRepository.create({
         purchaseRequestId: savedPurchaseRequest.id,
@@ -91,20 +96,18 @@ export class PurchaseRequestService {
 
       await historyRepository.save(history);
 
-      return {
-        ...savedPurchaseRequest,
-        items,
-      };
+      savedPurchaseRequest.items = savedItems;
+      return PurchaseRequestMapper.toDomain(savedPurchaseRequest);
     });
   }
 
   async update(
     id: number,
-    dto: UpdatePurchaseRequestBodyDTO,
+    data: UpdatePurchaseRequestData,
     userId: number,
-  ): Promise<PurchaseRequest> {
+  ): Promise<PurchaseRequestEntity> {
     const existing = await this.dataSource
-      .getRepository(PurchaseRequest)
+      .getRepository(PurchaseRequestOrmEntity)
       .findOne({
         where: { id },
         relations: { items: true },
@@ -121,30 +124,34 @@ export class PurchaseRequestService {
     }
 
     return this.dataSource.transaction(async (manager) => {
-      const prRepository = manager.getRepository(PurchaseRequest);
-      const itemRepository = manager.getRepository(PurchaseRequestItem);
-      const historyRepository = manager.getRepository(PurchaseRequestHistory);
+      const prRepository = manager.getRepository(PurchaseRequestOrmEntity);
+      const itemRepository = manager.getRepository(
+        PurchaseRequestItemOrmEntity,
+      );
+      const historyRepository = manager.getRepository(
+        PurchaseRequestHistoryOrmEntity,
+      );
 
       let totalAmount = existing.totalAmount;
       let updatedItems = existing.items;
 
-      if (dto.items && dto.items.length > 0) {
+      if (data.items && data.items.length > 0) {
         await itemRepository.delete({ purchaseRequestId: id });
 
-        totalAmount = dto.items.reduce(
+        totalAmount = data.items.reduce(
           (sum, item) => sum + Number(item.quantity) * Number(item.price),
           0,
         );
 
-        const newItems = dto.items.map((item) =>
+        const newItems = data.items.map((item) =>
           itemRepository.create({
             purchaseRequestId: id,
             itemName: item.itemName,
-            unit: item.unit,
+            unit: item.unit ?? undefined,
             quantity: item.quantity,
             price: item.price,
             amount: Number(item.quantity) * Number(item.price),
-            note: item.note,
+            note: item.note ?? undefined,
             createdById: userId,
             updatedById: userId,
           }),
@@ -154,10 +161,12 @@ export class PurchaseRequestService {
       }
 
       await prRepository.update(id, {
-        ...(dto.title !== undefined && { title: dto.title }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.departmentId !== undefined && {
-          departmentId: dto.departmentId,
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.description !== undefined && {
+          description: data.description ?? undefined,
+        }),
+        ...(data.departmentId !== undefined && {
+          departmentId: data.departmentId ?? undefined,
         }),
         totalAmount,
         updatedById: userId,
@@ -177,16 +186,18 @@ export class PurchaseRequestService {
         where: { id },
       });
 
-      return {
-        ...updatedRequest!,
-        items: updatedItems,
-      };
+      if (!updatedRequest) {
+        throw new NotFoundException('Đề nghị mua hàng không tồn tại');
+      }
+
+      updatedRequest.items = updatedItems;
+      return PurchaseRequestMapper.toDomain(updatedRequest);
     });
   }
 
-  async remove(id: number, userId: number): Promise<{ message: string }> {
+  async remove(id: number, userId: number): Promise<void> {
     const existing = await this.dataSource
-      .getRepository(PurchaseRequest)
+      .getRepository(PurchaseRequestOrmEntity)
       .findOne({
         where: { id },
       });
@@ -202,9 +213,13 @@ export class PurchaseRequestService {
     }
 
     await this.dataSource.transaction(async (manager) => {
-      const prRepository = manager.getRepository(PurchaseRequest);
-      const itemRepository = manager.getRepository(PurchaseRequestItem);
-      const historyRepository = manager.getRepository(PurchaseRequestHistory);
+      const prRepository = manager.getRepository(PurchaseRequestOrmEntity);
+      const itemRepository = manager.getRepository(
+        PurchaseRequestItemOrmEntity,
+      );
+      const historyRepository = manager.getRepository(
+        PurchaseRequestHistoryOrmEntity,
+      );
 
       await itemRepository.update(
         { purchaseRequestId: id },
@@ -226,13 +241,11 @@ export class PurchaseRequestService {
 
       await historyRepository.save(history);
     });
-
-    return { message: 'Xóa đề nghị mua hàng thành công' };
   }
 
-  async submit(id: number, userId: number): Promise<PurchaseRequest> {
+  async submit(id: number, userId: number): Promise<PurchaseRequestEntity> {
     const existing = await this.dataSource
-      .getRepository(PurchaseRequest)
+      .getRepository(PurchaseRequestOrmEntity)
       .findOne({
         where: { id },
         relations: { items: true },
@@ -255,8 +268,10 @@ export class PurchaseRequestService {
     }
 
     return this.dataSource.transaction(async (manager) => {
-      const prRepository = manager.getRepository(PurchaseRequest);
-      const historyRepository = manager.getRepository(PurchaseRequestHistory);
+      const prRepository = manager.getRepository(PurchaseRequestOrmEntity);
+      const historyRepository = manager.getRepository(
+        PurchaseRequestHistoryOrmEntity,
+      );
 
       const submittedAt = new Date();
 
@@ -281,48 +296,16 @@ export class PurchaseRequestService {
         relations: { items: true },
       });
 
-      return updated!;
+      return PurchaseRequestMapper.toDomain(updated!);
     });
   }
 
-  async approve(
-    id: number,
-    userId: number,
-    userDepartmentId?: number,
-    userPermissions: Permission[] = [],
-  ): Promise<PurchaseRequest> {
-    const existing = await this.dataSource
-      .getRepository(PurchaseRequest)
-      .findOne({
-        where: { id },
-        relations: { items: true },
-      });
-
-    if (!existing) {
-      throw new NotFoundException('Đề nghị mua hàng không tồn tại');
-    }
-
-    if (existing.status !== PurchaseRequestStatus.PENDING_APPROVAL) {
-      throw new ConflictException(
-        'Chỉ đề nghị ở trạng thái PENDING_APPROVAL mới có thể phê duyệt',
-      );
-    }
-
-    const hasFullManage =
-      userPermissions.includes(Permission.PURCHASE_REQUEST_MANAGE) ||
-      userPermissions.includes(Permission.USER_MANAGE);
-
-    if (!hasFullManage && userDepartmentId && existing.departmentId) {
-      if (userDepartmentId !== existing.departmentId) {
-        throw new ForbiddenException(
-          'Bạn chỉ có quyền phê duyệt đề nghị thuộc phòng ban của mình',
-        );
-      }
-    }
-
+  async approve(id: number, userId: number): Promise<PurchaseRequestEntity> {
     return this.dataSource.transaction(async (manager) => {
-      const prRepository = manager.getRepository(PurchaseRequest);
-      const historyRepository = manager.getRepository(PurchaseRequestHistory);
+      const prRepository = manager.getRepository(PurchaseRequestOrmEntity);
+      const historyRepository = manager.getRepository(
+        PurchaseRequestHistoryOrmEntity,
+      );
 
       const approvedAt = new Date();
 
@@ -347,60 +330,27 @@ export class PurchaseRequestService {
         relations: { items: true },
       });
 
-      return updated!;
+      return PurchaseRequestMapper.toDomain(updated!);
     });
   }
 
   async reject(
     id: number,
-    dto: RejectPurchaseRequestBodyDTO,
+    reason: string,
     userId: number,
-    userDepartmentId?: number,
-    userPermissions: Permission[] = [],
-  ): Promise<PurchaseRequest> {
-    const existing = await this.dataSource
-      .getRepository(PurchaseRequest)
-      .findOne({
-        where: { id },
-        relations: { items: true },
-      });
-
-    if (!existing) {
-      throw new NotFoundException('Đề nghị mua hàng không tồn tại');
-    }
-
-    if (existing.status !== PurchaseRequestStatus.PENDING_APPROVAL) {
-      throw new ConflictException(
-        'Chỉ đề nghị ở trạng thái PENDING_APPROVAL mới có thể từ chối',
-      );
-    }
-
-    if (!dto.reason || !dto.reason.trim()) {
-      throw new ConflictException('Lý do từ chối không được để trống');
-    }
-
-    const hasFullManage =
-      userPermissions.includes(Permission.PURCHASE_REQUEST_MANAGE) ||
-      userPermissions.includes(Permission.USER_MANAGE);
-
-    if (!hasFullManage && userDepartmentId && existing.departmentId) {
-      if (userDepartmentId !== existing.departmentId) {
-        throw new ForbiddenException(
-          'Bạn chỉ có quyền từ chối đề nghị thuộc phòng ban của mình',
-        );
-      }
-    }
-
+  ): Promise<PurchaseRequestEntity> {
     return this.dataSource.transaction(async (manager) => {
-      const prRepository = manager.getRepository(PurchaseRequest);
-      const historyRepository = manager.getRepository(PurchaseRequestHistory);
+      const prRepository = manager.getRepository(PurchaseRequestOrmEntity);
+      const historyRepository = manager.getRepository(
+        PurchaseRequestHistoryOrmEntity,
+      );
 
       const rejectedAt = new Date();
 
       await prRepository.update(id, {
         status: PurchaseRequestStatus.REJECTED,
         rejectedAt,
-        rejectReason: dto.reason.trim(),
+        rejectReason: reason.trim(),
         updatedById: userId,
       });
 
@@ -409,7 +359,7 @@ export class PurchaseRequestService {
         fromStatus: PurchaseRequestStatus.PENDING_APPROVAL,
         toStatus: PurchaseRequestStatus.REJECTED,
         action: PurchaseRequestAction.REJECT,
-        reason: dto.reason.trim(),
+        reason: reason.trim(),
         changedById: userId,
       });
 
@@ -420,24 +370,24 @@ export class PurchaseRequestService {
         relations: { items: true },
       });
 
-      return updated!;
+      return PurchaseRequestMapper.toDomain(updated!);
     });
   }
 
   async findAll(
-    query: GetPurchaseRequestsQueryDTO = {
+    query: PurchaseRequestQueryFilter = {
       page: 1,
       limit: 10,
       sortOrder: 'DESC',
     },
-  ): Promise<PaginatedResult<PurchaseRequest>> {
+  ): Promise<PaginatedResult<PurchaseRequestEntity>> {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
     const safePage = page > 0 ? page : 1;
     const safeLimit = limit > 0 ? limit : 10;
     const skip = (safePage - 1) * safeLimit;
 
-    const where: FindOptionsWhere<PurchaseRequest> = {};
+    const where: FindOptionsWhere<PurchaseRequestOrmEntity> = {};
 
     if (query.search) {
       where.code = ILike(`%${query.search.trim()}%`);
@@ -467,7 +417,7 @@ export class PurchaseRequestService {
     }
 
     const [data, total] = await this.dataSource
-      .getRepository(PurchaseRequest)
+      .getRepository(PurchaseRequestOrmEntity)
       .findAndCount({
         where,
         relations: { items: true, department: true },
@@ -479,7 +429,7 @@ export class PurchaseRequestService {
       });
 
     return {
-      data,
+      data: data.map((item) => PurchaseRequestMapper.toDomain(item)),
       meta: {
         page: safePage,
         limit: safeLimit,
@@ -489,24 +439,22 @@ export class PurchaseRequestService {
     };
   }
 
-  async findOne(id: number): Promise<PurchaseRequest> {
+  async findOne(id: number): Promise<PurchaseRequestEntity | null> {
     const purchaseRequest = await this.dataSource
-      .getRepository(PurchaseRequest)
+      .getRepository(PurchaseRequestOrmEntity)
       .findOne({
         where: { id },
-        relations: { items: true },
+        relations: { items: true, department: true },
       });
 
-    if (!purchaseRequest) {
-      throw new NotFoundException('Đề nghị mua hàng không tồn tại');
-    }
-
-    return purchaseRequest;
+    return purchaseRequest
+      ? PurchaseRequestMapper.toDomain(purchaseRequest)
+      : null;
   }
 
-  async getHistory(id: number): Promise<PurchaseRequestHistory[]> {
+  async getHistory(id: number): Promise<PurchaseRequestHistoryEntity[]> {
     const existing = await this.dataSource
-      .getRepository(PurchaseRequest)
+      .getRepository(PurchaseRequestOrmEntity)
       .findOne({
         where: { id },
       });
@@ -515,9 +463,13 @@ export class PurchaseRequestService {
       throw new NotFoundException('Đề nghị mua hàng không tồn tại');
     }
 
-    return this.dataSource.getRepository(PurchaseRequestHistory).find({
-      where: { purchaseRequestId: id },
-      order: { changedAt: 'ASC' },
-    });
+    const histories = await this.dataSource
+      .getRepository(PurchaseRequestHistoryOrmEntity)
+      .find({
+        where: { purchaseRequestId: id },
+        order: { changedAt: 'ASC' },
+      });
+
+    return histories.map((h) => PurchaseRequestMapper.toDomainHistory(h));
   }
 }
