@@ -1,8 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/modules/users/user.entity';
 import { RefreshToken } from 'src/modules/refresh-token/refresh-token.entity';
+import {
+  REFRESH_TOKEN_REPOSITORY,
+  type IRefreshTokenRepository,
+} from 'src/modules/refresh-token/domain';
 import { CreateRefreshTokenData, IAuthRepository } from '../../domain';
 
 @Injectable()
@@ -10,8 +14,8 @@ export class AuthTypeormRepository implements IAuthRepository {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(RefreshToken)
-    private readonly refreshTokenRepository: Repository<RefreshToken>,
+    @Inject(REFRESH_TOKEN_REPOSITORY)
+    private readonly refreshTokenRepository: IRefreshTokenRepository,
   ) {}
 
   async findUniqueUserIncludeRole({
@@ -30,33 +34,36 @@ export class AuthTypeormRepository implements IAuthRepository {
   async createRefreshToken(
     data: CreateRefreshTokenData,
   ): Promise<RefreshToken> {
-    const refreshToken = this.refreshTokenRepository.create(data);
-    return await this.refreshTokenRepository.save(refreshToken);
+    const tokenEntity = await this.refreshTokenRepository.create(data);
+    return {
+      id: tokenEntity.id,
+      token: tokenEntity.token,
+      userId: tokenEntity.userId,
+      expiresAt: tokenEntity.expiresAt,
+      createdAt: tokenEntity.createdAt,
+      updatedAt: tokenEntity.updatedAt,
+    } as unknown as RefreshToken;
   }
 
   async findUniqueRefreshTokenIncludeUserRole(where: {
     token: string;
   }): Promise<RefreshToken | null> {
-    return this.refreshTokenRepository.findOne({
+    return await this.refreshTokenRepository.findUniqueRefreshTokenIncludeUserRole(
       where,
-      relations: {
-        user: {
-          role: true,
-        },
-      },
-    });
+    );
   }
 
   async deleteRefreshToken(where: { token: string }): Promise<RefreshToken> {
-    const refreshToken = await this.refreshTokenRepository.findOne({
-      where,
-    });
+    const existing =
+      await this.refreshTokenRepository.findUniqueRefreshTokenIncludeUserRole(
+        where,
+      );
 
-    if (!refreshToken) {
+    if (!existing) {
       throw new Error('Refresh token not found');
     }
 
-    await this.refreshTokenRepository.remove(refreshToken);
-    return refreshToken;
+    await this.refreshTokenRepository.deleteByToken(where.token);
+    return existing;
   }
 }

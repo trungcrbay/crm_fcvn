@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/user.entity';
-import { RefreshToken } from '../refresh-token/refresh-token.entity';
+import { RefreshTokenModule } from '../refresh-token/refresh-token.module';
 import { AuthController } from './presentation';
 import {
   LoginUseCase,
@@ -13,7 +13,7 @@ import { AUTH_REPOSITORY } from './domain';
 import { AuthTypeormRepository } from './infrastructure';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, RefreshToken])],
+  imports: [TypeOrmModule.forFeature([User]), RefreshTokenModule],
   controllers: [AuthController],
   providers: [
     TokenGeneratorService,

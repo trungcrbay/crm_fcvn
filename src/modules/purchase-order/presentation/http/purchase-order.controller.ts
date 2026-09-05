@@ -1,4 +1,3 @@
-import { PurchaseOrderService } from './purchase-order.service';
 import {
   Body,
   Controller,
@@ -9,7 +8,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-
 import {
   ApiBearerAuth,
   ApiBody,
@@ -20,23 +18,29 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { SkipThrottle } from '@nestjs/throttler';
+import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
+
+import { PermissionGuard } from 'src/shared/guard/permission.guard';
+import { Permission } from 'src/shared/constant/permission.constant';
+import { Permissions } from 'src/shared/decorator/permissions.decorator';
+import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
+import { PaginatedResult } from 'src/shared/repositories/base.repository';
+
 import {
   CreatePurchaseOrderBodyDTO,
   GetPurchaseOrdersResDTO,
 } from './purchase-order.dto';
-import { PermissionGuard } from 'src/shared/guard/permission.guard';
-import { Permission } from 'src/shared/constant/permission.constant';
-import { Permissions } from 'src/shared/decorator/permissions.decorator';
-import { PurchaseOrder } from './purchase-order.entity';
-import { SkipThrottle } from '@nestjs/throttler';
-import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
 import {
   GetPurchaseOrdersQuerySchema,
+  PurchaseOrderType,
   type GetPurchaseOrdersQueryType,
 } from './purchase-order.model';
-import { PaginatedResult } from 'src/shared/repositories/base.repository';
-import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
-import { ConfigService } from '@nestjs/config';
+import { CreatePurchaseOrderUseCase } from '../../application/use-cases/create-purchase-order.use-case';
+import { FindAllPurchaseOrdersUseCase } from '../../application/use-cases/find-all-purchase-orders.use-case';
+import { ReproducePurchaseOrderUseCase } from '../../application/use-cases/reproduce-purchase-order.use-case';
+import { PurchaseOrderResponseMapper } from '../mappers/purchase-order-response.mapper';
 
 @SkipThrottle()
 @Controller('purchase-orders')
@@ -45,7 +49,9 @@ import { ConfigService } from '@nestjs/config';
 @UseGuards(PermissionGuard)
 export class PurchaseOrderController {
   constructor(
-    private readonly purchaseOrderService: PurchaseOrderService,
+    private readonly createPurchaseOrderUseCase: CreatePurchaseOrderUseCase,
+    private readonly findAllPurchaseOrdersUseCase: FindAllPurchaseOrdersUseCase,
+    private readonly reproducePurchaseOrderUseCase: ReproducePurchaseOrderUseCase,
     private readonly configService: ConfigService,
   ) {}
 
@@ -62,17 +68,22 @@ export class PurchaseOrderController {
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách phiếu mua hàng thành công.',
-    type: PurchaseOrder,
     isArray: true,
   })
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findAll(
+  async findAll(
     @Query(new ZodValidationPipe(GetPurchaseOrdersQuerySchema))
     query: GetPurchaseOrdersQueryType,
-  ): Promise<PaginatedResult<PurchaseOrder>> {
-    return this.purchaseOrderService.findAll(query);
+  ): Promise<PaginatedResult<PurchaseOrderType>> {
+    const result = await this.findAllPurchaseOrdersUseCase.execute(query);
+    return {
+      data: result.data.map((item) =>
+        PurchaseOrderResponseMapper.toResponse(item),
+      ),
+      meta: result.meta,
+    };
   }
 
   @Post()
@@ -80,7 +91,6 @@ export class PurchaseOrderController {
   @ApiBody({ type: CreatePurchaseOrderBodyDTO })
   @ApiCreatedResponse({
     description: 'Tạo mới phiếu mua hàng thành công.',
-    type: PurchaseOrder,
   })
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
@@ -90,15 +100,16 @@ export class PurchaseOrderController {
     Permission.PURCHASE_ORDER_MANAGE,
     Permission.PURCHASE_ORDER_CREATE,
   ])
-  purchaseOrder(
+  async purchaseOrder(
     @Body() createPurchaseOrderDTO: CreatePurchaseOrderBodyDTO,
     @Headers('idempotency-key')
     idempotencyKey: string,
-  ) {
-    return this.purchaseOrderService.purchaseOrder(
+  ): Promise<PurchaseOrderType> {
+    const entity = await this.createPurchaseOrderUseCase.execute(
       createPurchaseOrderDTO,
       idempotencyKey,
     );
+    return PurchaseOrderResponseMapper.toResponse(entity);
   }
 
   @Post('/reproduce')
@@ -112,18 +123,19 @@ export class PurchaseOrderController {
     Permission.PURCHASE_ORDER_MANAGE,
     Permission.PURCHASE_ORDER_CREATE,
   ])
-  reproduceOrder(
+  async reproduceOrder(
     @Body() createPurchaseOrderDTO: CreatePurchaseOrderBodyDTO,
     @Headers('idempotency-key')
     idempotencyKey: string,
-  ) {
-    //chỉ bật test trên môi trường development để giả lập lỗi, các môi trường khác sẽ trả về 404 Not Found
+  ): Promise<PurchaseOrderType> {
+    // chỉ bật test trên môi trường development để giả lập lỗi, các môi trường khác sẽ trả về 404 Not Found
     if (this.configService.get<string>('NODE_ENV') !== 'development') {
       throw new NotFoundException();
     }
-    return this.purchaseOrderService.reproduce(
+    const entity = await this.reproducePurchaseOrderUseCase.execute(
       createPurchaseOrderDTO,
       idempotencyKey,
     );
+    return PurchaseOrderResponseMapper.toResponse(entity);
   }
 }

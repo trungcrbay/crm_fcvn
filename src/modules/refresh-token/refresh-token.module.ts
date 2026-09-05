@@ -1,11 +1,24 @@
 import { Module } from '@nestjs/common';
-import { RefreshToken } from './refresh-token.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RefreshTokenRepository } from './refresh-token.repository';
+import { REFRESH_TOKEN_REPOSITORY } from './domain';
+import {
+  RefreshTokenOrmEntity,
+  RefreshTokenTypeormRepository,
+} from './infrastructure';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RefreshToken])],
+  imports: [TypeOrmModule.forFeature([RefreshTokenOrmEntity])],
   controllers: [],
-  providers: [RefreshTokenRepository],
+  providers: [
+    {
+      provide: REFRESH_TOKEN_REPOSITORY,
+      useClass: RefreshTokenTypeormRepository,
+    },
+    {
+      provide: RefreshTokenTypeormRepository,
+      useExisting: REFRESH_TOKEN_REPOSITORY,
+    },
+  ],
+  exports: [REFRESH_TOKEN_REPOSITORY, RefreshTokenTypeormRepository],
 })
 export class RefreshTokenModule {}
