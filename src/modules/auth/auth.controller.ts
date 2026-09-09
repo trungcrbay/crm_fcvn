@@ -19,6 +19,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { ThrottleMessage } from 'src/shared/decorator/throttle-message.decorator';
 
 @Controller('auth')
 @ApiTags('Auth')
@@ -26,6 +27,9 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ThrottleMessage(
+    'Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau 1 phút.',
+  )
   @Public()
   @Post('login')
   @ZodSerializerDto(LoginResDTO)

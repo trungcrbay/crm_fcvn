@@ -25,7 +25,8 @@ import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.mod
 import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-order-item.module';
 import { PurchaseRequestModule } from './modules/purchase-request/purchase-request.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { CustomThrottlerGuard } from './shared/guard/throttler.guard';
 
 @Module({
   imports: [
@@ -68,7 +69,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     },
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: CustomThrottlerGuard,
     },
     AppService,
     {
