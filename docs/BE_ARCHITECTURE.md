@@ -202,19 +202,24 @@ sequenceDiagram
 ## Feature Modules & Workflow Patterns
 
 ### 1. Module chuẩn CRUD: `src/modules/customers/`
+
 Module chuẩn mẫu để tham chiếu pattern CRUD + soft delete:
+
 - Entity `extends BaseEntity` (audit + soft delete).
 - Repository kế thừa `BaseRepository<Customer>`.
 - Controller đầy đủ Swagger decorators (`@ApiPaginationQuery()`, `@ApiQuery()`, `@ZodSerializerDto()`).
 
 ### 2. Module Workflow & State Machine: `src/modules/purchase-request/`
+
 Module quản lý quy trình phê duyệt Đề nghị mua hàng (Purchase Request):
+
 - **Trạng thái:** `DRAFT` ➔ `PENDING_APPROVAL` ➔ `APPROVED` / `REJECTED`.
 - **Phân quyền theo phòng ban:** `DEPARTMENT_MANAGER` chỉ được duyệt PR thuộc phòng ban của mình; `BOD`/`MASTER` duyệt toàn hệ thống.
 - **Audit Trail & Lịch sử:** Lưu vết mỗi lần chuyển trạng thái vào bảng `purchase_request_histories` (kèm `fromStatus`, `toStatus`, `action`, `reason`, `changedById`, `changedAt`).
 - **Line Items:** Quản lý danh sách mặt hàng cần mua (`PurchaseRequestItem`), tự động tính `totalAmount` khi tạo/cập nhật.
 
 ### 3. Module Transaction & Idempotency: `src/modules/purchase-order/`
+
 - Không dùng repository — dùng `DataSource.transaction()` trực tiếp để đảm bảo tính toàn vẹn khi tạo Purchase Order và Order Items.
 - Tích hợp `IdempotencyService` lưu lock và response vào Redis (TTL 24h) chống duplicate request.
 
@@ -253,6 +258,7 @@ sequenceDiagram
 ```
 
 **Điểm chú ý:**
+
 - Payload access token: `{ userId, roleId, roleName, departmentId? }` + claim `uuid` ngẫu nhiên.
 - Refresh token lưu trong bảng `refresh_tokens` (entity `RefreshToken extends BaseEntity`, `@Index(['expiresAt'])`).
 - **Rotation**: Mỗi lần refresh, token cũ bị xóa và sinh cặp mới — dùng `Promise.all([delete, generate])` đảm bảo atomic.
@@ -305,6 +311,7 @@ graph LR
 ## Docker & Containerization
 
 Hệ thống được đóng gói hoàn chỉnh bằng Docker:
+
 - **`Dockerfile` (Multi-stage build):**
   - `base`: Alpine + build tools (`python3`, `make`, `g++` cho native modules như `bcrypt`) + `npm ci`.
   - `development`: Mount source code, chạy dev server watch (`npm run start:dev`).
