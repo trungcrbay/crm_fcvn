@@ -87,15 +87,21 @@ const roleSeed = [
   {
     name: 'DEPARTMENT_MANAGER',
     description:
-      'Trưởng bộ phận / Trưởng phòng ban (Duyệt & từ chối đề xuất mua hàng theo phòng ban)',
+      'Trưởng bộ phận / Trưởng phòng ban (Duyệt & từ chối đề xuất mua hàng, duyệt sửa/xóa khách hàng)',
     permissions: [
       Permission.USER_READ,
       Permission.USER_CREATE,
       Permission.USER_UPDATE,
       Permission.CUSTOMER_READ,
+      Permission.CUSTOMER_READ_APPROACHING,
       Permission.CUSTOMER_CREATE,
       Permission.CUSTOMER_UPDATE,
       Permission.CUSTOMER_DELETE,
+      Permission.CUSTOMER_MANAGE,
+      Permission.CUSTOMER_REQUEST_READ,
+      Permission.CUSTOMER_REQUEST_APPROVE,
+      Permission.CUSTOMER_REQUEST_REJECT,
+      Permission.CUSTOMER_REQUEST_MANAGE,
       Permission.DEPARTMENT_READ,
       Permission.DEPARTMENT_CREATE,
       Permission.DEPARTMENT_UPDATE,
@@ -116,6 +122,11 @@ const roleSeed = [
     description: 'Sales vận hành bán hàng',
     permissions: [
       Permission.CUSTOMER_READ,
+      Permission.CUSTOMER_READ_APPROACHING,
+      Permission.CUSTOMER_CREATE,
+      Permission.CUSTOMER_DELETE, // Chỉ xóa KH tiếp cận do chính mình tạo (UC18)
+      Permission.CUSTOMER_REQUEST_READ,
+      Permission.CUSTOMER_REQUEST_CREATE, // Gửi yêu cầu sửa/xóa KH (UC03)
       Permission.DEPARTMENT_READ,
       Permission.FACILITY_READ,
       Permission.SUPPLIER_READ,

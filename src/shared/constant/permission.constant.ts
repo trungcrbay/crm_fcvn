@@ -13,10 +13,18 @@ export enum Permission {
 
   // Customer Module
   CUSTOMER_READ = 'customer.read',
+  CUSTOMER_READ_APPROACHING = 'customer.readApproaching',
   CUSTOMER_CREATE = 'customer.create',
   CUSTOMER_UPDATE = 'customer.update',
   CUSTOMER_DELETE = 'customer.delete',
   CUSTOMER_MANAGE = 'customer.manage',
+
+  // Customer Request Module (Quy trình duyệt sửa/xóa UC03)
+  CUSTOMER_REQUEST_READ = 'customerRequest.read',
+  CUSTOMER_REQUEST_CREATE = 'customerRequest.create',
+  CUSTOMER_REQUEST_APPROVE = 'customerRequest.approve',
+  CUSTOMER_REQUEST_REJECT = 'customerRequest.reject',
+  CUSTOMER_REQUEST_MANAGE = 'customerRequest.manage',
 
   // Department Module
   DEPARTMENT_READ = 'department.read',
@@ -94,9 +102,16 @@ export const MANAGE_PERMISSIONS: Record<string, Permission[]> = {
   ],
   [Permission.CUSTOMER_MANAGE]: [
     Permission.CUSTOMER_READ,
+    Permission.CUSTOMER_READ_APPROACHING,
     Permission.CUSTOMER_CREATE,
     Permission.CUSTOMER_UPDATE,
     Permission.CUSTOMER_DELETE,
+  ],
+  [Permission.CUSTOMER_REQUEST_MANAGE]: [
+    Permission.CUSTOMER_REQUEST_READ,
+    Permission.CUSTOMER_REQUEST_CREATE,
+    Permission.CUSTOMER_REQUEST_APPROVE,
+    Permission.CUSTOMER_REQUEST_REJECT,
   ],
 
   [Permission.DEPARTMENT_MANAGE]: [
