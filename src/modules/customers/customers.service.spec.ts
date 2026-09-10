@@ -1,6 +1,11 @@
 import { ConflictException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { CustomersService } from './customers.service';
+import {
+  CustomerStatus,
+  CustomerType,
+  GroupType,
+} from 'src/shared/constant/customer.constant';
 
 describe('CustomersService.create', () => {
   const userId = 4;
@@ -47,6 +52,9 @@ describe('CustomersService.create', () => {
         email: '  ALICE@example.com  ',
         phone: ' 0909123456 ',
         address: '  HCM  ',
+        customerType: CustomerType.INDIVIDUAL,
+        groupType: GroupType.NORMAL,
+        status: CustomerStatus.ACTIVE,
       },
       userId,
     );
@@ -56,14 +64,16 @@ describe('CustomersService.create', () => {
     expect(result.email).toBe('alice@example.com');
     expect(result.phone).toBe('0909123456');
 
-    expect(repository.create).toHaveBeenCalledWith({
-      customerCode: 'CUS-001',
-      name: 'Alice',
-      email: 'alice@example.com',
-      phone: '0909123456',
-      address: 'HCM',
-      createdById: userId,
-    });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerCode: 'CUS-001',
+        name: 'Alice',
+        email: 'alice@example.com',
+        phone: '0909123456',
+        address: 'HCM',
+        createdById: userId,
+      }),
+    );
   });
 
   it('should throw ConflictException when repository reports unique constraint violation', async () => {
@@ -80,6 +90,9 @@ describe('CustomersService.create', () => {
           email: 'alice@example.com',
           phone: '0909123456',
           address: 'HCM',
+          customerType: CustomerType.INDIVIDUAL,
+          groupType: GroupType.NORMAL,
+          status: CustomerStatus.ACTIVE,
         },
         userId,
       ),
@@ -101,6 +114,9 @@ describe('CustomersService.create', () => {
           email: 'alice@example.com',
           phone: '0909123456',
           address: 'HCM',
+          customerType: CustomerType.INDIVIDUAL,
+          groupType: GroupType.NORMAL,
+          status: CustomerStatus.ACTIVE,
         },
         userId,
       ),
