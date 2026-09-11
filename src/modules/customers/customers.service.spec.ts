@@ -6,6 +6,7 @@ import {
   CustomerType,
   GroupType,
 } from 'src/shared/constant/customer.constant';
+import { UserStatus } from 'src/shared/constant/user.constant';
 
 describe('CustomersService.create', () => {
   const userId = 4;
@@ -16,6 +17,12 @@ describe('CustomersService.create', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+  });
+
+  const buildUsersRepository = () => ({
+    findOne: jest
+      .fn()
+      .mockResolvedValue({ id: userId, status: UserStatus.ACTIVE }),
   });
 
   const duplicateError = () =>
@@ -29,6 +36,7 @@ describe('CustomersService.create', () => {
 
   it('should create a valid customer with trimmed values', async () => {
     const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
 
     repository.create.mockResolvedValue({
       id: '1',
@@ -43,7 +51,10 @@ describe('CustomersService.create', () => {
       updatedById: null,
     });
 
-    const service = new CustomersService(repository as any);
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+    );
 
     const result = await service.create(
       {
@@ -76,11 +87,96 @@ describe('CustomersService.create', () => {
     );
   });
 
-  it('should throw ConflictException when repository reports unique constraint violation', async () => {
+  it('should assign explicit saleOwnerId when provided', async () => {
     const repository = buildRepository();
+    const explicitSaleOwnerId = 99;
+    const usersRepository = {
+      findOne: jest.fn().mockResolvedValue({
+        id: explicitSaleOwnerId,
+        status: UserStatus.ACTIVE,
+      }),
+    };
+
+    repository.create.mockResolvedValue({
+      id: '2',
+      customerCode: 'CUS-002',
+      name: 'Bob',
+      email: 'bob@example.com',
+      phone: '0912345678',
+      saleOwnerId: explicitSaleOwnerId,
+      createdById: userId,
+    });
+
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+    );
+
+    const result = await service.create(
+      {
+        customerCode: 'CUS-002',
+        name: 'Bob',
+        email: 'bob@example.com',
+        phone: '0912345678',
+        saleOwnerId: explicitSaleOwnerId,
+        customerType: CustomerType.INDIVIDUAL,
+        groupType: GroupType.NORMAL,
+        status: CustomerStatus.ACTIVE,
+      },
+      userId,
+    );
+
+    expect(usersRepository.findOne).toHaveBeenCalledWith(explicitSaleOwnerId);
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        saleOwnerId: explicitSaleOwnerId,
+        createdById: userId,
+      }),
+    );
+    expect(result.saleOwnerId).toBe(explicitSaleOwnerId);
+  });
+
+  it('should throw BadRequestException if saleOwner does not exist or is inactive', async () => {
+    const repository = buildRepository();
+    const usersRepository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 99, status: UserStatus.INACTIVE }),
+    };
+
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+    );
+
+    await expect(
+      service.create(
+        {
+          customerCode: 'CUS-003',
+          name: 'Charlie',
+          email: 'charlie@example.com',
+          phone: '0987654321',
+          saleOwnerId: 99,
+          customerType: CustomerType.INDIVIDUAL,
+          groupType: GroupType.NORMAL,
+          status: CustomerStatus.ACTIVE,
+        },
+        userId,
+      ),
+    ).rejects.toThrow(
+      'Nhân viên kinh doanh phụ trách không tồn tại hoặc đã bị vô hiệu hóa',
+    );
+  });
+
+  it('should throw ConflictException when email or phone already exists', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
     repository.create.mockRejectedValue(duplicateError());
 
-    const service = new CustomersService(repository as any);
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+    );
 
     await expect(
       service.create(
@@ -101,10 +197,14 @@ describe('CustomersService.create', () => {
 
   it('should rethrow non-unique repository errors', async () => {
     const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
     const error = new Error('DB failure');
     repository.create.mockRejectedValue(error);
 
-    const service = new CustomersService(repository as any);
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+    );
 
     await expect(
       service.create(

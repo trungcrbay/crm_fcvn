@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -11,10 +12,15 @@ import { QueryOptions } from 'src/shared/model/query.model';
 import { isUniqueConstraintError } from 'src/shared/helpers';
 import { Like } from 'typeorm';
 import { GetCustomerQueryType } from './customer.model';
+import { UsersRepository } from '../users/users.repository';
+import { UserStatus } from 'src/shared/constant/user.constant';
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly customersRepository: CustomersRepository) {}
+  constructor(
+    private readonly customersRepository: CustomersRepository,
+    private readonly usersRepository: UsersRepository,
+  ) {}
 
   async create(
     createCustomerDto: CreateCustomerBodyDTO,
@@ -55,7 +61,16 @@ export class CustomersService {
       implementationPolicy,
     } = createCustomerDto;
 
+    const targetSaleOwnerId = saleOwnerId || userId;
+
     try {
+      const saleOwner = await this.usersRepository.findOne(targetSaleOwnerId);
+      if (!saleOwner || saleOwner.status !== UserStatus.ACTIVE) {
+        throw new BadRequestException(
+          'Nhân viên kinh doanh phụ trách không tồn tại hoặc đã bị vô hiệu hóa',
+        );
+      }
+
       const customer = await this.customersRepository.create({
         customerCode: customerCode?.trim(),
         name: name?.trim(),
