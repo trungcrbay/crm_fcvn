@@ -9,10 +9,19 @@ const CustomZodValidationPipe = createZodValidationPipe({
     }
 
     return new UnprocessableEntityException(
-      error.issues.map((issue) => ({
-        ...issue,
-        path: issue.path.join('.'),
-      })),
+      error.issues.map((issue) => {
+        if (issue.code === 'unrecognized_keys') {
+          return {
+            field: issue.keys.join(', '),
+            message: `Tham số không được hỗ trợ: ${issue.keys.join(', ')}`,
+          };
+        }
+
+        return {
+          field: issue.path.join('.'),
+          message: issue.message,
+        };
+      }),
     );
   },
 });

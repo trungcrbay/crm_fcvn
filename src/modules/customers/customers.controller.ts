@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ZodSerializerDto, ZodValidationPipe } from 'nestjs-zod';
+import { ZodSerializerDto } from 'nestjs-zod';
 import type { PaginatedResult } from '../../shared/repositories/base.repository';
 import { Customer } from './customer.entity';
 import { CustomersService } from './customers.service';
@@ -40,10 +40,19 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ActiveUser } from 'src/shared/decorator/active-user.decorator';
+import {
+  ActiveUser,
+  ActiveUserPermissions,
+} from 'src/shared/decorator/active-user.decorator';
 import { MessageResDTO } from 'src/shared/dto/response.dto';
 import { ApiPaginationQuery } from 'src/shared/decorator/api-query.decorator';
 import { SkipThrottle } from '@nestjs/throttler';
+import {
+  CustomerStatus,
+  CustomerType,
+  GroupType,
+} from 'src/shared/constant/customer.constant';
+import CustomZodValidationPipe from 'src/shared/pipe/custom-zod-validation.pipe';
 
 @SkipThrottle()
 @Controller('customers')
@@ -72,14 +81,21 @@ export class CustomersController {
   create(
     @Body() createCustomerDto: CreateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
+    @ActiveUserPermissions() permissions: Permission[],
   ): Promise<Customer> {
-    return this.customersService.create(createCustomerDto, userId);
+    return this.customersService.create(createCustomerDto, {
+      userId,
+      permissions,
+    });
   }
 
   @Get()
   @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_READ])
   @ZodSerializerDto(GetCustomersResDTO)
-  @ApiOperation({ summary: 'Lấy danh sách khách hàng' })
+  @ApiOperation({
+    summary:
+      'Lấy danh sách khách hàng (hỗ trợ phân quyền Sales Owner, tìm kiếm & lọc)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách khách hàng thành công.',
@@ -90,13 +106,55 @@ export class CustomersController {
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
   @ApiPaginationQuery()
-  @ApiQuery({ name: 'name', required: false, type: String })
-  @ApiQuery({ name: 'email', required: false, type: String })
+  @ApiQuery({
+    name: 'name',
+    required: false,
+    type: String,
+    description: 'Tìm kiếm theo tên khách hàng',
+  })
+  @ApiQuery({
+    name: 'email',
+    required: false,
+    type: String,
+    description: 'Tìm kiếm theo email',
+  })
+  @ApiQuery({
+    name: 'customerCode',
+    required: false,
+    type: String,
+    description: 'Tìm kiếm theo mã khách hàng',
+  })
+  @ApiQuery({
+    name: 'customerType',
+    required: false,
+    enum: CustomerType,
+    description: 'Lọc theo loại khách hàng',
+  })
+  @ApiQuery({
+    name: 'groupType',
+    required: false,
+    enum: GroupType,
+    description: 'Lọc theo nhóm khách hàng',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: CustomerStatus,
+    description: 'Lọc theo trạng thái',
+  })
+  @ApiQuery({
+    name: 'saleOwnerId',
+    required: false,
+    type: Number,
+    description: 'Lọc theo nhân viên kinh doanh phụ trách',
+  })
   findAll(
-    @Query(new ZodValidationPipe(GetCustomersQuerySchema))
+    @Query(new CustomZodValidationPipe(GetCustomersQuerySchema))
     query: GetCustomerQueryType,
+    @ActiveUser('userId') userId: number,
+    @ActiveUserPermissions() permissions: Permission[],
   ): Promise<Customer[] | PaginatedResult<Customer>> {
-    return this.customersService.findAll(query);
+    return this.customersService.findAll(query, { userId, permissions });
   }
 
   @Get(':id')

@@ -44,12 +44,14 @@ export class Customer extends BaseEntity {
   @Column({
     type: 'enum',
     enum: CustomerType,
+    default: CustomerType.INDIVIDUAL,
   })
   customerType: CustomerType;
 
   @Column({
     type: 'enum',
     enum: GroupType,
+    default: GroupType.NORMAL,
   })
   groupType: GroupType; // nhóm KH
 
