@@ -58,7 +58,7 @@ export const CustomerSchema = z.object({
   email: z.string().email(),
   note: z.string().optional().nullable(),
   detail: z.string().optional().nullable(),
-  creditLimit: z.number().optional().nullable(),
+  creditLimit: z.coerce.number().optional().nullable(),
   taxCode: z.string().max(50).optional().nullable(),
   agencyCode: z.string().max(50).optional().nullable(),
   organizationName: z.string().max(255).optional().nullable(),
@@ -74,10 +74,10 @@ export const CustomerSchema = z.object({
   address: z.string().max(500).optional().nullable(),
   otherContacts: z.array(OtherContactSchema).optional().nullable(),
   saleOwnerId: z.number().optional().nullable(),
-  averageRevenue: z.number().optional().nullable(),
+  averageRevenue: z.coerce.number().optional().nullable(),
   implementationPolicy: z.string().max(255).optional().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
 });
 
 export const GetCustomersResSchema = z.object({
@@ -88,11 +88,26 @@ export const GetCustomersResSchema = z.object({
 export const GetCustomersQuerySchema = SharedQuerySchema.extend({
   name: z.string().optional(),
   email: z.string().optional(),
-  phone: z.string().optional(),
   customerCode: z.string().optional(),
-  customerType: z.nativeEnum(CustomerType).optional(),
-  groupType: z.nativeEnum(GroupType).optional(),
-  status: z.nativeEnum(CustomerStatus).optional(),
+
+  customerType: z
+    .nativeEnum(CustomerType, {
+      message: 'Loại khách hàng không hợp lệ',
+    })
+    .optional(),
+
+  groupType: z
+    .nativeEnum(GroupType, {
+      message: 'Nhóm khách hàng không hợp lệ',
+    })
+    .optional(),
+
+  status: z
+    .nativeEnum(CustomerStatus, {
+      message: 'Trạng thái khách hàng không hợp lệ',
+    })
+    .optional(),
+
   saleOwnerId: z.coerce.number().optional(),
 });
 

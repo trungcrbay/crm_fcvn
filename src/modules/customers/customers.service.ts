@@ -9,22 +9,30 @@ import { CustomersRepository } from './customers.repository';
 import { Customer } from './customer.entity';
 import { CreateCustomerBodyDTO, UpdateCustomerBodyDTO } from './customer.dto';
 import { QueryOptions } from 'src/shared/model/query.model';
-import { isUniqueConstraintError } from 'src/shared/helpers';
-import { Like } from 'typeorm';
+import {
+  isForeignKeyConstraintError,
+  isUniqueConstraintError,
+} from 'src/shared/helpers';
+import { ILike, Like } from 'typeorm';
 import { GetCustomerQueryType } from './customer.model';
 import { UsersRepository } from '../users/users.repository';
 import { UserStatus } from 'src/shared/constant/user.constant';
+import { PinoLogger } from 'nestjs-pino';
+import { Permission } from 'src/shared/constant/permission.constant';
 
 @Injectable()
 export class CustomersService {
   constructor(
     private readonly customersRepository: CustomersRepository,
     private readonly usersRepository: UsersRepository,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(CustomersService.name);
+  }
 
   async create(
     createCustomerDto: CreateCustomerBodyDTO,
-    userId: number,
+    currentUser: { userId: number; permissions?: Permission[] },
   ): Promise<Customer> {
     const {
       customerCode,
@@ -59,9 +67,16 @@ export class CustomersService {
       saleOwnerId,
       averageRevenue,
       implementationPolicy,
+      accountantIds,
+      bookerIds,
     } = createCustomerDto;
 
-    const targetSaleOwnerId = saleOwnerId || userId;
+    const { userId, permissions } = currentUser;
+
+    const isManager = permissions?.includes(Permission.CUSTOMER_MANAGE);
+
+    //k phải có quyền customer.manage -> nv không được tự ý gắn id sale khác
+    const targetSaleOwnerId = isManager && saleOwnerId ? saleOwnerId : userId;
 
     try {
       const saleOwner = await this.usersRepository.findOne(targetSaleOwnerId);
@@ -109,12 +124,14 @@ export class CustomersService {
         source: source ? source.trim() : null,
         gender,
         otherContacts: otherContacts || [],
-        saleOwnerId: saleOwnerId || userId,
+        saleOwnerId: targetSaleOwnerId,
         averageRevenue,
         implementationPolicy: implementationPolicy
           ? implementationPolicy.trim()
           : null,
         createdById: userId,
+        accountantInCharge: accountantIds?.map((id) => ({ id })) || [],
+        bookerInCharge: bookerIds?.map((id) => ({ id })) || [],
       });
 
       return customer;
@@ -125,46 +142,41 @@ export class CustomersService {
         );
       }
 
+      if (isForeignKeyConstraintError(error)) {
+        throw new BadRequestException(
+          'Một hoặc nhiều nhân viên kế toán hoặc booker được chỉ định không tồn tại',
+        );
+      }
       throw error;
     }
   }
 
   async findAll(
     query: GetCustomerQueryType = { page: 1, limit: 10, sortOrder: 'ASC' },
+    currentUser?: { userId: number; permissions?: Permission[] },
   ): Promise<Customer[] | PaginatedResult<Customer>> {
-    const where: QueryOptions<Customer>['where'] = {};
+    // Nếu user không có quyền CUSTOMER_MANAGE, chỉ được phép xem khách hàng do chính mình phụ trách.
+    const hasCustomerManage = currentUser?.permissions?.includes(
+      Permission.CUSTOMER_MANAGE,
+    );
 
-    if (query.name) {
-      where.name = Like(`%${query.name.trim()}%`);
-    }
+    const saleOwnerId = hasCustomerManage
+      ? query.saleOwnerId
+      : currentUser?.userId;
 
-    if (query.email) {
-      where.email = Like(`%${query.email.trim().toLowerCase()}%`);
-    }
-
-    if (query.phone) {
-      where.phone = Like(`%${query.phone.trim()}%`);
-    }
-
-    if (query.customerCode) {
-      where.customerCode = Like(`%${query.customerCode.trim()}%`);
-    }
-
-    if (query.customerType) {
-      where.customerType = query.customerType;
-    }
-
-    if (query.groupType) {
-      where.groupType = query.groupType;
-    }
-
-    if (query.status) {
-      where.status = query.status;
-    }
-
-    if (query.saleOwnerId) {
-      where.saleOwnerId = query.saleOwnerId;
-    }
+    const where: QueryOptions<Customer>['where'] = {
+      ...(saleOwnerId && { saleOwnerId }),
+      ...(query.name && { name: ILike(`%${query.name.trim()}%`) }),
+      ...(query.email && {
+        email: Like(`%${query.email.trim().toLowerCase()}%`),
+      }),
+      ...(query.customerCode && {
+        customerCode: ILike(`%${query.customerCode.trim()}%`),
+      }),
+      ...(query.customerType && { customerType: query.customerType }),
+      ...(query.groupType && { groupType: query.groupType }),
+      ...(query.status && { status: query.status }),
+    };
 
     const options: QueryOptions = {
       page: query.page,
@@ -174,7 +186,9 @@ export class CustomersService {
       where,
     };
 
-    return this.customersRepository.findAll(options);
+    const result = await this.customersRepository.findAll(options);
+
+    return result;
   }
 
   async findOne(id: number): Promise<Customer> {
