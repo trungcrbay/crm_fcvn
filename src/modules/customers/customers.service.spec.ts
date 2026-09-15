@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { CustomersService } from './customers.service';
 import {
@@ -539,5 +539,178 @@ describe('CustomersService.findAll', () => {
 
       expect(result).toEqual(emptyResult);
     });
+  });
+});
+
+describe('CustomersService.findOne', () => {
+  const buildRepository = () => ({
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    findOneBy: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  });
+
+  const buildUsersRepository = () => ({
+    findOne: jest.fn(),
+  });
+
+  const mockLogger = {
+    setContext: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  };
+
+  it('Sales xem đúng dữ liệu khách thuộc quyền sở hữu của mình', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    const saleUserId = 10;
+    const customerId = 1;
+    const mockCustomer = {
+      id: customerId,
+      customerCode: 'CUS-001',
+      name: 'Khách của Sale 10',
+      saleOwnerId: saleUserId,
+    };
+
+    repository.findOneBy.mockResolvedValue(mockCustomer);
+
+    const result = await service.findOne(customerId, {
+      userId: saleUserId,
+      permissions: [Permission.CUSTOMER_READ],
+    });
+
+    expect(repository.findOneBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: customerId,
+        saleOwnerId: saleUserId,
+      }),
+      expect.objectContaining({
+        saleOwner: true,
+        accountantInCharge: true,
+        bookerInCharge: true,
+        appointments: true,
+      }),
+    );
+    expect(result).toEqual(mockCustomer);
+  });
+
+  it('Quản lý có CUSTOMER_MANAGE có thể xem khách của bất kỳ Sale nào', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    const managerUserId = 99;
+    const customerId = 2;
+    const mockCustomer = {
+      id: customerId,
+      customerCode: 'CUS-002',
+      name: 'Khách của ai đó',
+      saleOwnerId: 10,
+    };
+
+    repository.findOneBy.mockResolvedValue(mockCustomer);
+
+    const result = await service.findOne(customerId, {
+      userId: managerUserId,
+      permissions: [Permission.CUSTOMER_MANAGE],
+    });
+
+    expect(repository.findOneBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: customerId,
+      }),
+      expect.anything(),
+    );
+    // Không được giới hạn saleOwnerId trong điều kiện lọc
+    expect(repository.findOneBy).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        saleOwnerId: expect.anything(),
+      }),
+      expect.anything(),
+    );
+    expect(result).toEqual(mockCustomer);
+  });
+
+  it('Đổi ID sang khách của Sale khác thì bị chặn và trả NotFoundException', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    const currentSaleId = 10;
+    const otherCustomerOfOtherSaleId = 999;
+
+    // Khi query id = 999 kèm saleOwnerId = 10, DB không tìm thấy bản ghi nào
+    repository.findOneBy.mockResolvedValue(null);
+
+    await expect(
+      service.findOne(otherCustomerOfOtherSaleId, {
+        userId: currentSaleId,
+        permissions: [Permission.CUSTOMER_READ],
+      }),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(repository.findOneBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: otherCustomerOfOtherSaleId,
+        saleOwnerId: currentSaleId,
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('ID không tồn tại trong DB ném NotFoundException với thông điệp chuẩn', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    repository.findOneBy.mockResolvedValue(null);
+
+    await expect(
+      service.findOne(999999, {
+        userId: 1,
+        permissions: [Permission.CUSTOMER_MANAGE],
+      }),
+    ).rejects.toThrow(new NotFoundException('Không tìm thấy khách hàng'));
+  });
+
+  it('Lỗi DB bất ngờ được ném lại nguyên vẹn để HttpExceptionFilter xử lý', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const dbError = new Error('Database connection failed');
+    repository.findOneBy.mockRejectedValue(dbError);
+
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    await expect(
+      service.findOne(1, {
+        userId: 1,
+        permissions: [Permission.CUSTOMER_MANAGE],
+      }),
+    ).rejects.toThrow('Database connection failed');
   });
 });

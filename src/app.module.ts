@@ -27,6 +27,7 @@ import { PurchaseRequestModule } from './modules/purchase-request/purchase-reque
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './shared/guard/throttler.guard';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { CustomThrottlerGuard } from './shared/guard/throttler.guard';
     PurchaseOrderModule,
     PurchaseOrderItemModule,
     PurchaseRequestModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [

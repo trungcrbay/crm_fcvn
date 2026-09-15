@@ -30,6 +30,34 @@ export class CustomersService {
     this.logger.setContext(CustomersService.name);
   }
 
+  hasManagePerrmission(currentUser: {
+    userId: number;
+    permissions?: Permission[];
+  }) {
+    // Nếu user không có quyền CUSTOMER_MANAGE, chỉ được phép xem khách hàng do chính mình phụ trách
+    const hasCustomerManage = currentUser?.permissions?.includes(
+      Permission.CUSTOMER_MANAGE,
+    );
+
+    return hasCustomerManage;
+  }
+
+  getSaleOwnerId(
+    currentUser: {
+      userId: number;
+      permissions?: Permission[];
+    },
+    query: GetCustomerQueryType,
+  ) {
+    // Nếu user không có quyền CUSTOMER_MANAGE, chỉ được phép xem khách hàng do schính mình phụ trách
+    const hasCustomerManage = this.hasManagePerrmission(currentUser);
+    const saleOwnerId = hasCustomerManage
+      ? query.saleOwnerId
+      : currentUser?.userId;
+
+    return saleOwnerId;
+  }
+
   async create(
     createCustomerDto: CreateCustomerBodyDTO,
     currentUser: { userId: number; permissions?: Permission[] },
@@ -153,16 +181,9 @@ export class CustomersService {
 
   async findAll(
     query: GetCustomerQueryType = { page: 1, limit: 10, sortOrder: 'ASC' },
-    currentUser?: { userId: number; permissions?: Permission[] },
+    currentUser: { userId: number; permissions?: Permission[] },
   ): Promise<Customer[] | PaginatedResult<Customer>> {
-    // Nếu user không có quyền CUSTOMER_MANAGE, chỉ được phép xem khách hàng do chính mình phụ trách.
-    const hasCustomerManage = currentUser?.permissions?.includes(
-      Permission.CUSTOMER_MANAGE,
-    );
-
-    const saleOwnerId = hasCustomerManage
-      ? query.saleOwnerId
-      : currentUser?.userId;
+    const saleOwnerId = this.getSaleOwnerId(currentUser, query);
 
     const where: QueryOptions<Customer>['where'] = {
       ...(saleOwnerId && { saleOwnerId }),
@@ -191,8 +212,18 @@ export class CustomersService {
     return result;
   }
 
-  async findOne(id: number): Promise<Customer> {
-    const customer = await this.customersRepository.findOne(id, {
+  async findOne(
+    id: number,
+    currentUser: { userId: number; permissions?: Permission[] },
+  ): Promise<Customer> {
+    const hasManagePerrmission = this.hasManagePerrmission(currentUser);
+    const saleOwnerId = hasManagePerrmission ? undefined : currentUser?.userId;
+
+    const where: QueryOptions<Customer>['where'] = {
+      ...(saleOwnerId && { saleOwnerId }),
+      id,
+    };
+    const customer = await this.customersRepository.findOneBy(where, {
       saleOwner: true,
       accountantInCharge: true,
       bookerInCharge: true,
@@ -226,8 +257,15 @@ export class CustomersService {
     return customer;
   }
 
-  async remove(id: number, userId: number) {
-    await this.findOne(id);
+  async remove(
+    id: number,
+    currentUser: {
+      userId: number;
+      permissions: Permission[];
+    },
+  ) {
+    const { userId } = currentUser;
+    await this.findOne(id, currentUser);
     await this.customersRepository.remove(id, userId);
     return {
       message: 'Xóa khách hàng thành công',

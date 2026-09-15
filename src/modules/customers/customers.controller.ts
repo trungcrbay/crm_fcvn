@@ -171,8 +171,12 @@ export class CustomersController {
   @ApiForbiddenResponse({
     description: 'Bạn không có quyền thực hiện hành động này.',
   })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<Customer | null> {
-    return this.customersService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser('userId') userId: number,
+    @ActiveUserPermissions() permissions: Permission[],
+  ): Promise<Customer | null> {
+    return this.customersService.findOne(id, { userId, permissions });
   }
 
   @Put(':id')
@@ -213,7 +217,8 @@ export class CustomersController {
   remove(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser('userId') userId: number,
+    @ActiveUserPermissions() permissions: Permission[],
   ) {
-    return this.customersService.remove(id, userId);
+    return this.customersService.remove(id, { userId, permissions });
   }
 }
