@@ -2,7 +2,7 @@ import { PutObjectCommand, S3 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
-import { readFileSync } from 'fs';
+import { createReadStream } from 'fs';
 import envConfig from 'src/shared/config';
 import mime from 'mime-types';
 
@@ -33,7 +33,7 @@ export class S3Service {
       params: {
         Bucket: envConfig.S3_BUCKET_NAME,
         Key: filename, // duong dan den file trong bucket
-        Body: readFileSync(filepath),
+        Body: createReadStream(filepath),
         ContentType: contentType,
       },
       tags: [],

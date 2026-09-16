@@ -5,7 +5,6 @@ import {
   MaxFileSizeValidator,
   NotFoundException,
   Param,
-  ParseFilePipe,
   Post,
   Res,
   UploadedFiles,
@@ -36,6 +35,7 @@ import {
   ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
+import { ParseFilePipeWithUnlink } from './parse-file-pipe-with-unlink.pipe';
 
 @SkipThrottle()
 @ApiTags('Media')
@@ -84,7 +84,7 @@ export class MediaController {
   )
   uploadFile(
     @UploadedFiles(
-      new ParseFilePipe({
+      new ParseFilePipeWithUnlink({
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
           // new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
@@ -128,11 +128,11 @@ export class MediaController {
   }
 
   @Post('upload/presigned-url')
-  @Public()
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Tạo Presigned URL để tải tệp trực tiếp lên S3 từ client',
     description:
-      'Nhận thông tin tệp (tên và kích thước <= 1MB) và trả về Presigned URL có thời hạn để client upload thẳng lên S3.',
+      'Nhận thông tin tệp (tên và kích thước <= 20MB) và trả về Presigned URL có thời hạn để client upload thẳng lên S3.',
   })
   @ApiBody({ type: PresignedUploadFileBodyDTO })
   @ApiOkResponse({
@@ -140,7 +140,7 @@ export class MediaController {
     type: PresignedUploadFileResDTO,
   })
   @ApiBadRequestResponse({
-    description: 'Dữ liệu đầu vào không hợp lệ hoặc kích thước vượt quá 1MB.',
+    description: 'Dữ liệu đầu vào không hợp lệ hoặc kích thước vượt quá 20MB.',
   })
   @ZodSerializerDto(PresignedUploadFileResDTO)
   async createPresignedUrl(@Body() body: PresignedUploadFileBodyDTO) {
