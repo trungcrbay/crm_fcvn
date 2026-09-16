@@ -5,9 +5,9 @@ import {
   CustomerStatus,
   CustomerType,
   GroupType,
-} from 'src/shared/constant/customer.constant';
-import { UserStatus } from 'src/shared/constant/user.constant';
-import { Permission } from 'src/shared/constant/permission.constant';
+} from '../../shared/constant/customer.constant';
+import { UserStatus } from '../../shared/constant/user.constant';
+import { Permission } from '../../shared/constant/permission.constant';
 
 describe('CustomersService.create', () => {
   const userId = 4;
@@ -712,5 +712,180 @@ describe('CustomersService.findOne', () => {
         permissions: [Permission.CUSTOMER_MANAGE],
       }),
     ).rejects.toThrow('Database connection failed');
+  });
+});
+
+describe('CustomersService.update', () => {
+  const buildRepository = () => ({
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    findOneBy: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  });
+
+  const buildUsersRepository = () => ({
+    findOne: jest.fn(),
+  });
+
+  const mockLogger = {
+    setContext: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  };
+
+  it('Cho phép cập nhật thành công khi là Sales sở hữu khách hàng', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    const saleUserId = 10;
+    const customerId = 1;
+    const existingCustomer = {
+      id: customerId,
+      name: 'Old Name',
+      saleOwnerId: saleUserId,
+    };
+
+    repository.findOneBy.mockResolvedValue(existingCustomer);
+    repository.update.mockResolvedValue({
+      ...existingCustomer,
+      name: 'New Name',
+      updatedById: saleUserId,
+    });
+
+    const result = await service.update(
+      customerId,
+      { name: 'New Name' },
+      {
+        userId: saleUserId,
+        permissions: [Permission.CUSTOMER_READ, Permission.CUSTOMER_UPDATE],
+      },
+    );
+
+    expect(result.name).toBe('New Name');
+    expect(repository.update).toHaveBeenCalledWith(
+      customerId,
+      expect.objectContaining({
+        name: 'New Name',
+        updatedById: saleUserId,
+      }),
+    );
+  });
+
+  it('Chặn Sales cập nhật khách hàng của Sales khác (Bảo vệ IDOR)', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    const currentSaleId = 10;
+    const otherCustomerId = 99;
+
+    // findOneBy trả về null do saleOwnerId không khớp
+    repository.findOneBy.mockResolvedValue(null);
+
+    await expect(
+      service.update(
+        otherCustomerId,
+        { name: 'Hacked Name' },
+        {
+          userId: currentSaleId,
+          permissions: [Permission.CUSTOMER_READ, Permission.CUSTOMER_UPDATE],
+        },
+      ),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('Chặn Sales thường tự ý chuyển saleOwnerId sang người khác', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    const currentSaleId = 10;
+    const customerId = 1;
+    const existingCustomer = {
+      id: customerId,
+      name: 'Existing Customer',
+      saleOwnerId: currentSaleId,
+    };
+
+    repository.findOneBy.mockResolvedValue(existingCustomer);
+
+    await expect(
+      service.update(
+        customerId,
+        { saleOwnerId: 99 },
+        {
+          userId: currentSaleId,
+          permissions: [Permission.CUSTOMER_READ, Permission.CUSTOMER_UPDATE],
+        },
+      ),
+    ).rejects.toThrow(
+      'Bạn không có quyền chuyển quyền phụ trách khách hàng cho nhân viên khác',
+    );
+  });
+
+  it('Quản lý có quyền CUSTOMER_MANAGE có thể cập nhật khách và chuyển saleOwnerId hợp lệ', async () => {
+    const repository = buildRepository();
+    const usersRepository = buildUsersRepository();
+    const service = new CustomersService(
+      repository as any,
+      usersRepository as any,
+      mockLogger as any,
+    );
+
+    const managerUserId = 1;
+    const targetSaleId = 20;
+    const customerId = 1;
+    const existingCustomer = {
+      id: customerId,
+      name: 'Existing Customer',
+      saleOwnerId: 10,
+    };
+
+    repository.findOneBy.mockResolvedValue(existingCustomer);
+    usersRepository.findOne.mockResolvedValue({
+      id: targetSaleId,
+      status: UserStatus.ACTIVE,
+    });
+    repository.update.mockResolvedValue({
+      ...existingCustomer,
+      saleOwnerId: targetSaleId,
+      updatedById: managerUserId,
+    });
+
+    const result = await service.update(
+      customerId,
+      { saleOwnerId: targetSaleId },
+      {
+        userId: managerUserId,
+        permissions: [Permission.CUSTOMER_MANAGE],
+      },
+    );
+
+    expect(result.saleOwnerId).toBe(targetSaleId);
+    expect(repository.update).toHaveBeenCalledWith(
+      customerId,
+      expect.objectContaining({
+        saleOwnerId: targetSaleId,
+        updatedById: managerUserId,
+      }),
+    );
   });
 });

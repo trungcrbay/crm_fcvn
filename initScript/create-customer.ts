@@ -5,6 +5,10 @@ import { Customer } from '../src/modules/customers/customer.entity';
 import { User } from '../src/modules/users/user.entity';
 import { Role } from '../src/modules/roles/role.entity';
 import { Department } from '../src/modules/departments/department.entity';
+import { CustomerAppointment } from '../src/modules/customers/customer-appointment.entity';
+import { CustomerRequest } from '../src/modules/customers/customer-request.entity';
+import { randomUUID } from 'node:crypto';
+import { GroupType } from '../src/shared/constant/customer.constant';
 
 const loadEnvFile = () => {
   const envPath = resolve(process.cwd(), '.env');
@@ -37,8 +41,8 @@ const loadEnvFile = () => {
 
 loadEnvFile();
 
-const TOTAL_CUSTOMERS = 10_000;
-const BATCH_SIZE = 500;
+const TOTAL_CUSTOMERS = 2000;
+const BATCH_SIZE = 100;
 
 const CREATED_BY_ID = 2;
 
@@ -49,7 +53,14 @@ const dataSource = new DataSource({
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE || 'nestjs_crm',
-  entities: [Customer, User, Role, Department],
+  entities: [
+    Customer,
+    User,
+    Role,
+    Department,
+    CustomerAppointment,
+    CustomerRequest,
+  ],
   synchronize: false,
   logging: false,
 });
@@ -91,8 +102,9 @@ const randomItem = <T>(items: T[]): T => {
   return items[Math.floor(Math.random() * items.length)];
 };
 
+const batchId = randomUUID().replace(/-/g, '').slice(0, 4).toUpperCase();
 const generateCustomerCode = (index: number): string => {
-  return `CUS${String(index).padStart(6, '0')}`;
+  return `CUS${batchId}${String(index).padStart(5, '0')}`;
 };
 
 const generateCustomer = (index: number): Partial<Customer> => {
@@ -102,8 +114,8 @@ const generateCustomer = (index: number): Partial<Customer> => {
   return {
     customerCode,
     name,
-    email: `customer${index}@example.com`,
-    phone: `09${String(10000000 + index).slice(-8)}`,
+    email: `customer${batchId}_${index}@example.com`,
+    phone: `09${String(index).padStart(8, '0')}`,
     address: `${Math.floor(Math.random() * 200) + 1} Đường ${randomItem([
       'Láng',
       'Nguyễn Trãi',
@@ -112,6 +124,7 @@ const generateCustomer = (index: number): Partial<Customer> => {
       'Hoàng Quốc Việt',
     ])}, ${randomItem(cities)}`,
     createdById: CREATED_BY_ID,
+    groupType: GroupType.VIP,
   };
 };
 

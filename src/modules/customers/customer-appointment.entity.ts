@@ -12,7 +12,7 @@ import { User } from '../users/user.entity';
 import {
   AppointmentActivityType,
   AppointmentStatus,
-} from 'src/shared/constant/customer.constant';
+} from '../../shared/constant/customer.constant';
 
 @Entity('customer_appointments')
 @Index(['customerId'])

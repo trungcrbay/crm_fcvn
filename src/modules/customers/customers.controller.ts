@@ -51,7 +51,7 @@ import {
   CustomerStatus,
   CustomerType,
   GroupType,
-} from 'src/shared/constant/customer.constant';
+} from '../../shared/constant/customer.constant';
 import CustomZodValidationPipe from 'src/shared/pipe/custom-zod-validation.pipe';
 
 @SkipThrottle()
@@ -198,8 +198,12 @@ export class CustomersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateCustomerDto: UpdateCustomerBodyDTO,
     @ActiveUser('userId') userId: number,
+    @ActiveUserPermissions() permissions: Permission[],
   ): Promise<Customer | null> {
-    return this.customersService.update(id, updateCustomerDto, userId);
+    return this.customersService.update(id, updateCustomerDto, {
+      userId,
+      permissions,
+    });
   }
 
   @Delete(':id')

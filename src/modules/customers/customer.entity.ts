@@ -19,7 +19,7 @@ import {
   Gender,
   GroupType,
   IdentityType,
-} from 'src/shared/constant/customer.constant';
+} from '../../shared/constant/customer.constant';
 
 export class OtherContact {
   fullName: string; // Tên người liên hệ

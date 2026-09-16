@@ -13,7 +13,7 @@ import {
   isForeignKeyConstraintError,
   isUniqueConstraintError,
 } from 'src/shared/helpers';
-import { ILike, Like } from 'typeorm';
+import { ILike } from 'typeorm';
 import { GetCustomerQueryType } from './customer.model';
 import { UsersRepository } from '../users/users.repository';
 import { UserStatus } from 'src/shared/constant/user.constant';
@@ -189,7 +189,7 @@ export class CustomersService {
       ...(saleOwnerId && { saleOwnerId }),
       ...(query.name && { name: ILike(`%${query.name.trim()}%`) }),
       ...(query.email && {
-        email: Like(`%${query.email.trim().toLowerCase()}%`),
+        email: ILike(`%${query.email.trim().toLowerCase()}%`),
       }),
       ...(query.customerCode && {
         customerCode: ILike(`%${query.customerCode.trim()}%`),
@@ -240,21 +240,79 @@ export class CustomersService {
   async update(
     id: number,
     updateCustomerDto: UpdateCustomerBodyDTO,
-    userId: number,
+    currentUser: {
+      userId: number;
+      permissions?: Permission[];
+    },
   ): Promise<Customer> {
-    const updatedBy = userId;
-    const { ...data } = updateCustomerDto;
+    const { userId, permissions } = currentUser;
+    await this.findOne(id, currentUser);
 
-    const customer = await this.customersRepository.update(id, {
-      ...data,
-      updatedById: updatedBy,
-    } as any);
-
-    if (!customer) {
-      throw new NotFoundException('Không tìm thấy khách hàng');
+    const isManager = permissions?.includes(Permission.CUSTOMER_MANAGE);
+    if (
+      !isManager &&
+      updateCustomerDto.saleOwnerId &&
+      updateCustomerDto.saleOwnerId !== userId
+    ) {
+      throw new BadRequestException(
+        'Bạn không có quyền chuyển quyền phụ trách khách hàng cho nhân viên khác',
+      );
     }
 
-    return customer;
+    if (updateCustomerDto.saleOwnerId) {
+      const saleOwner = await this.usersRepository.findOne(
+        updateCustomerDto.saleOwnerId,
+      );
+      if (!saleOwner || saleOwner.status !== UserStatus.ACTIVE) {
+        throw new BadRequestException(
+          'Nhân viên kinh doanh phụ trách không tồn tại hoặc đã bị vô hiệu hóa',
+        );
+      }
+    }
+
+    const { accountantIds, bookerIds, ...data } = updateCustomerDto;
+
+    const updatePayload: Record<string, any> = {
+      ...data,
+      updatedById: userId,
+    };
+
+    if (accountantIds) {
+      updatePayload.accountantInCharge = accountantIds.map((accId) => ({
+        id: accId,
+      }));
+    }
+
+    if (bookerIds) {
+      updatePayload.bookerInCharge = bookerIds.map((bookId) => ({
+        id: bookId,
+      }));
+    }
+
+    try {
+      const customer = await this.customersRepository.update(
+        id,
+        updatePayload as any,
+      );
+
+      if (!customer) {
+        throw new NotFoundException('Không tìm thấy khách hàng');
+      }
+
+      return customer;
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException(
+          'Mã, email, số điện thoại hoặc số giấy tờ khách hàng đã tồn tại',
+        );
+      }
+      if (isForeignKeyConstraintError(error)) {
+        throw new BadRequestException(
+          'Một hoặc nhiều nhân viên kế toán hoặc booker được chỉ định không tồn tại',
+        );
+      }
+      throw error;
+    }
   }
 
   async remove(

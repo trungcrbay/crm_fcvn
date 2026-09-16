@@ -7,7 +7,7 @@ import {
   Gender,
   GroupType,
   IdentityType,
-} from 'src/shared/constant/customer.constant';
+} from '../../shared/constant/customer.constant';
 
 export const OtherContactSchema = z.object({
   fullName: z

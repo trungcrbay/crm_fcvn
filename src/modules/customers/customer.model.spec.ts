@@ -3,7 +3,7 @@ import {
   CustomerStatus,
   CustomerType,
   GroupType,
-} from 'src/shared/constant/customer.constant';
+} from '../../shared/constant/customer.constant';
 
 describe('CreateCustomerBodySchema Validation', () => {
   const validBasePayload = {
