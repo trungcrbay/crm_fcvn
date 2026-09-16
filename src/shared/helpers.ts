@@ -1,5 +1,6 @@
 import { QueryFailedError } from 'typeorm';
-
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 type PostgresDriverError = {
   code?: string;
   detail?: string;
@@ -31,3 +32,8 @@ export function isForeignKeyConstraintError(error: unknown): boolean {
 export function isNotNullConstraintError(error: unknown): boolean {
   return isPostgresError(error, '23502');
 }
+
+export const generateRandomFilename = (filename: string) => {
+  const ext = path.extname(filename);
+  return `${uuidv4()}${ext}`;
+};

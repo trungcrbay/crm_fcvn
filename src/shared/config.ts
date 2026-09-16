@@ -24,6 +24,10 @@ const configSchema = z.object({
   DB_USER: z.string().min(1),
   DB_PASSWORD: z.string().min(1),
   IDEMPOTENCY_KEY: z.string().min(1),
+  S3_REGION: z.string().min(1),
+  S3_ACCESS_KEY: z.string().min(1),
+  S3_SECRET_KEY: z.string().min(1),
+  S3_BUCKET_NAME: z.string().min(1),
 });
 
 const configServer = configSchema.safeParse(process.env);

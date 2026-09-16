@@ -93,6 +93,16 @@ export class BaseRepository<T extends { id?: EntityId } & SoftDeletableEntity> {
     });
   }
 
+  async findOneBy(
+    where: FindOptionsWhere<T>,
+    relations?: FindOptionsRelations<T>,
+  ): Promise<T | null> {
+    return this.repository.findOne({
+      where,
+      relations,
+    });
+  }
+
   async update(id: EntityId, data: DeepPartial<T>): Promise<T | null> {
     await this.repository.update(id, data as any);
     return this.findOne(id);

@@ -13,7 +13,7 @@ import {
   isForeignKeyConstraintError,
   isUniqueConstraintError,
 } from 'src/shared/helpers';
-import { ILike, Like } from 'typeorm';
+import { ILike } from 'typeorm';
 import { GetCustomerQueryType } from './customer.model';
 import { UsersRepository } from '../users/users.repository';
 import { UserStatus } from 'src/shared/constant/user.constant';
@@ -28,6 +28,34 @@ export class CustomersService {
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(CustomersService.name);
+  }
+
+  hasManagePerrmission(currentUser: {
+    userId: number;
+    permissions?: Permission[];
+  }) {
+    // Nếu user không có quyền CUSTOMER_MANAGE, chỉ được phép xem khách hàng do chính mình phụ trách
+    const hasCustomerManage = currentUser?.permissions?.includes(
+      Permission.CUSTOMER_MANAGE,
+    );
+
+    return hasCustomerManage;
+  }
+
+  getSaleOwnerId(
+    currentUser: {
+      userId: number;
+      permissions?: Permission[];
+    },
+    query: GetCustomerQueryType,
+  ) {
+    // Nếu user không có quyền CUSTOMER_MANAGE, chỉ được phép xem khách hàng do schính mình phụ trách
+    const hasCustomerManage = this.hasManagePerrmission(currentUser);
+    const saleOwnerId = hasCustomerManage
+      ? query.saleOwnerId
+      : currentUser?.userId;
+
+    return saleOwnerId;
   }
 
   async create(
@@ -153,22 +181,15 @@ export class CustomersService {
 
   async findAll(
     query: GetCustomerQueryType = { page: 1, limit: 10, sortOrder: 'ASC' },
-    currentUser?: { userId: number; permissions?: Permission[] },
+    currentUser: { userId: number; permissions?: Permission[] },
   ): Promise<Customer[] | PaginatedResult<Customer>> {
-    // Nếu user không có quyền CUSTOMER_MANAGE, chỉ được phép xem khách hàng do chính mình phụ trách.
-    const hasCustomerManage = currentUser?.permissions?.includes(
-      Permission.CUSTOMER_MANAGE,
-    );
-
-    const saleOwnerId = hasCustomerManage
-      ? query.saleOwnerId
-      : currentUser?.userId;
+    const saleOwnerId = this.getSaleOwnerId(currentUser, query);
 
     const where: QueryOptions<Customer>['where'] = {
       ...(saleOwnerId && { saleOwnerId }),
       ...(query.name && { name: ILike(`%${query.name.trim()}%`) }),
       ...(query.email && {
-        email: Like(`%${query.email.trim().toLowerCase()}%`),
+        email: ILike(`%${query.email.trim().toLowerCase()}%`),
       }),
       ...(query.customerCode && {
         customerCode: ILike(`%${query.customerCode.trim()}%`),
@@ -191,8 +212,18 @@ export class CustomersService {
     return result;
   }
 
-  async findOne(id: number): Promise<Customer> {
-    const customer = await this.customersRepository.findOne(id, {
+  async findOne(
+    id: number,
+    currentUser: { userId: number; permissions?: Permission[] },
+  ): Promise<Customer> {
+    const hasManagePerrmission = this.hasManagePerrmission(currentUser);
+    const saleOwnerId = hasManagePerrmission ? undefined : currentUser?.userId;
+
+    const where: QueryOptions<Customer>['where'] = {
+      ...(saleOwnerId && { saleOwnerId }),
+      id,
+    };
+    const customer = await this.customersRepository.findOneBy(where, {
       saleOwner: true,
       accountantInCharge: true,
       bookerInCharge: true,
@@ -209,25 +240,90 @@ export class CustomersService {
   async update(
     id: number,
     updateCustomerDto: UpdateCustomerBodyDTO,
-    userId: number,
+    currentUser: {
+      userId: number;
+      permissions?: Permission[];
+    },
   ): Promise<Customer> {
-    const updatedBy = userId;
-    const { ...data } = updateCustomerDto;
+    const { userId, permissions } = currentUser;
+    await this.findOne(id, currentUser);
 
-    const customer = await this.customersRepository.update(id, {
-      ...data,
-      updatedById: updatedBy,
-    } as any);
-
-    if (!customer) {
-      throw new NotFoundException('Không tìm thấy khách hàng');
+    const isManager = permissions?.includes(Permission.CUSTOMER_MANAGE);
+    if (
+      !isManager &&
+      updateCustomerDto.saleOwnerId &&
+      updateCustomerDto.saleOwnerId !== userId
+    ) {
+      throw new BadRequestException(
+        'Bạn không có quyền chuyển quyền phụ trách khách hàng cho nhân viên khác',
+      );
     }
 
-    return customer;
+    if (updateCustomerDto.saleOwnerId) {
+      const saleOwner = await this.usersRepository.findOne(
+        updateCustomerDto.saleOwnerId,
+      );
+      if (!saleOwner || saleOwner.status !== UserStatus.ACTIVE) {
+        throw new BadRequestException(
+          'Nhân viên kinh doanh phụ trách không tồn tại hoặc đã bị vô hiệu hóa',
+        );
+      }
+    }
+
+    const { accountantIds, bookerIds, ...data } = updateCustomerDto;
+
+    const updatePayload: Record<string, any> = {
+      ...data,
+      updatedById: userId,
+    };
+
+    if (accountantIds) {
+      updatePayload.accountantInCharge = accountantIds.map((accId) => ({
+        id: accId,
+      }));
+    }
+
+    if (bookerIds) {
+      updatePayload.bookerInCharge = bookerIds.map((bookId) => ({
+        id: bookId,
+      }));
+    }
+
+    try {
+      const customer = await this.customersRepository.update(
+        id,
+        updatePayload as any,
+      );
+
+      if (!customer) {
+        throw new NotFoundException('Không tìm thấy khách hàng');
+      }
+
+      return customer;
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException(
+          'Mã, email, số điện thoại hoặc số giấy tờ khách hàng đã tồn tại',
+        );
+      }
+      if (isForeignKeyConstraintError(error)) {
+        throw new BadRequestException(
+          'Một hoặc nhiều nhân viên kế toán hoặc booker được chỉ định không tồn tại',
+        );
+      }
+      throw error;
+    }
   }
 
-  async remove(id: number, userId: number) {
-    await this.findOne(id);
+  async remove(
+    id: number,
+    currentUser: {
+      userId: number;
+      permissions: Permission[];
+    },
+  ) {
+    const { userId } = currentUser;
+    await this.findOne(id, currentUser);
     await this.customersRepository.remove(id, userId);
     return {
       message: 'Xóa khách hàng thành công',
