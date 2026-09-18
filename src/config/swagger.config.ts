@@ -10,17 +10,14 @@ const swaggerDocumentConfig = new DocumentBuilder()
   .setTitle('CRM FCVN API')
   .setDescription('CRM Fcvn API')
   .setVersion('1.0.0')
-  .addBearerAuth(
-    {
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-      in: 'header',
-      name: 'Authorization',
-      description: 'Paste access token without Bearer prefix',
-    },
-    'Bearer',
-  )
+  .addBearerAuth({
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+    in: 'header',
+    name: 'Authorization',
+    description: 'Paste access token without Bearer prefix',
+  })
   .build();
 
 const swaggerUiOptions: SwaggerCustomOptions = {

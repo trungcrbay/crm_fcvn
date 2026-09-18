@@ -245,6 +245,18 @@ export class CustomerRequestService {
         const updated = await requestRepo.findOne({
           where: { id },
           relations: { customer: true, approvedBy: true, createdBy: true },
+          select: {
+            approvedBy: {
+              id: true,
+              email: true,
+              name: true,
+            },
+            createdBy: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
         });
 
         return updated!;
