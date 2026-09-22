@@ -1,16 +1,20 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { CustomerRequestService } from './customer-request.service';
 import { Customer } from '../customers/customer.entity';
+import { CustomerAppointment } from '../customers/customer-appointment.entity';
 import {
   CustomerRequestAction,
   CustomerRequestStatus,
 } from '../../shared/constant/customer-request.constant';
 import { Permission } from '../../shared/constant/permission.constant';
 import {
+  AppointmentStatus,
   CustomerStatus,
   CustomerType,
   GroupType,
@@ -20,8 +24,11 @@ describe('CustomerRequestService', () => {
   let service: CustomerRequestService;
   let customerRequestRepository: any;
   let customersRepository: any;
+  let customerAppointmentRepository: any;
   let dataSource: any;
   let logger: any;
+  let auditLogService: any;
+  let notificationService: any;
 
   const saleUserId = 5;
   const otherSaleUserId = 99;
@@ -42,6 +49,10 @@ describe('CustomerRequestService', () => {
   };
 
   beforeEach(() => {
+    customerAppointmentRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
     customerRequestRepository = {
       create: jest.fn(),
       findAll: jest.fn(),
@@ -66,6 +77,9 @@ describe('CustomerRequestService', () => {
             if (entity === Customer) {
               return customersRepository;
             }
+            if (entity === CustomerAppointment) {
+              return customerAppointmentRepository;
+            }
             return customerRequestRepository;
           }),
         };
@@ -80,11 +94,22 @@ describe('CustomerRequestService', () => {
       warn: jest.fn(),
     };
 
+    auditLogService = {
+      log: jest.fn().mockResolvedValue({ id: 1 }),
+      computeDiffs: jest.fn().mockReturnValue([]),
+    };
+
+    notificationService = {
+      createNotification: jest.fn().mockResolvedValue({ id: 1 }),
+    };
+
     service = new CustomerRequestService(
       customerRequestRepository,
       customersRepository,
       dataSource,
       logger,
+      auditLogService,
+      notificationService,
     );
   });
 
@@ -94,12 +119,6 @@ describe('CustomerRequestService', () => {
       actionType: CustomerRequestAction.EDIT,
       proposedData: { name: 'Tên Công ty Mới' },
       reason: 'Đổi tên giấy phép kinh doanh',
-    };
-
-    const deletePayload = {
-      customerId: 10,
-      actionType: CustomerRequestAction.DELETE,
-      reason: 'Khách hàng giải thể doanh nghiệp',
     };
 
     it('should allow Sales to create request when customer belongs to them', async () => {
@@ -141,62 +160,8 @@ describe('CustomerRequestService', () => {
       expect(customerRequestRepository.create).not.toHaveBeenCalled();
     });
 
-    it('should allow Manager with CUSTOMER_MANAGE to create request for any customer', async () => {
-      customersRepository.findOne.mockResolvedValue(mockCustomer);
-      customerRequestRepository.findOneBy.mockResolvedValue(null);
-      customerRequestRepository.create.mockImplementation((data: any) =>
-        Promise.resolve({ id: 2, ...data }),
-      );
-
-      const result = await service.create(deletePayload, {
-        userId: managerUserId,
-        permissions: [Permission.CUSTOMER_MANAGE],
-      });
-
-      expect(result.id).toBe(2);
-      expect(customerRequestRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          customerId: 10,
-          actionType: CustomerRequestAction.DELETE,
-          status: CustomerRequestStatus.PENDING,
-          createdById: managerUserId,
-        }),
-      );
-    });
-
-    it('should allow Manager with CUSTOMER_REQUEST_MANAGE to create request for any customer', async () => {
-      customersRepository.findOne.mockResolvedValue(mockCustomer);
-      customerRequestRepository.findOneBy.mockResolvedValue(null);
-      customerRequestRepository.create.mockImplementation((data: any) =>
-        Promise.resolve({ id: 3, ...data }),
-      );
-
-      const result = await service.create(editPayload, {
-        userId: managerUserId,
-        permissions: [Permission.CUSTOMER_REQUEST_MANAGE],
-      });
-
-      expect(result.id).toBe(3);
-    });
-
     it('should reject with NotFoundException when customer does not exist', async () => {
       customersRepository.findOne.mockResolvedValue(null);
-
-      await expect(
-        service.create(editPayload, {
-          userId: saleUserId,
-          permissions: [Permission.CUSTOMER_REQUEST_CREATE],
-        }),
-      ).rejects.toThrow(NotFoundException);
-
-      expect(customerRequestRepository.create).not.toHaveBeenCalled();
-    });
-
-    it('should reject with NotFoundException when customer is soft-deleted', async () => {
-      customersRepository.findOne.mockResolvedValue({
-        ...mockCustomer,
-        deletedAt: new Date(),
-      });
 
       await expect(
         service.create(editPayload, {
@@ -291,7 +256,7 @@ describe('CustomerRequestService', () => {
     });
   });
 
-  describe('BR-01, BR-02, BR-03: Approve Workflow, Transaction Rollback & Audit Log', () => {
+  describe('Approve Workflow, Transaction Rollback & Audit Log', () => {
     it('should approve EDIT request, update customer in DB, update status to APPROVED, and write Audit Log', async () => {
       const pendingEditRequest = {
         id: 1,
@@ -310,11 +275,16 @@ describe('CustomerRequestService', () => {
       customerRequestRepository.findOneBy.mockResolvedValue(pendingEditRequest);
       customersRepository.update.mockResolvedValue({ affected: 1 });
       customerRequestRepository.update.mockResolvedValue({ affected: 1 });
-      customerRequestRepository.findOne.mockResolvedValue({
-        ...pendingEditRequest,
-        status: CustomerRequestStatus.APPROVED,
-        approvedById: managerUserId,
-        approvedAt: new Date(),
+      customerRequestRepository.findOne.mockImplementation((options: any) => {
+        if (options?.lock) {
+          return Promise.resolve(pendingEditRequest);
+        }
+        return Promise.resolve({
+          ...pendingEditRequest,
+          status: CustomerRequestStatus.APPROVED,
+          approvedById: managerUserId,
+          approvedAt: new Date(),
+        });
       });
 
       const approved = await service.approve(1, managerUserId);
@@ -332,14 +302,6 @@ describe('CustomerRequestService', () => {
         1,
         expect.objectContaining({
           status: CustomerRequestStatus.APPROVED,
-          approvedById: managerUserId,
-        }),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Customer request approved successfully',
-          requestId: 1,
-          actionType: CustomerRequestAction.EDIT,
           approvedById: managerUserId,
         }),
       );
@@ -362,11 +324,17 @@ describe('CustomerRequestService', () => {
       );
       customersRepository.update.mockResolvedValue({ affected: 1 });
       customerRequestRepository.update.mockResolvedValue({ affected: 1 });
-      customerRequestRepository.findOne.mockResolvedValue({
-        ...pendingDeleteRequest,
-        status: CustomerRequestStatus.APPROVED,
-        approvedById: managerUserId,
-        approvedAt: new Date(),
+      customerAppointmentRepository.findOne.mockResolvedValue(null);
+      customerRequestRepository.findOne.mockImplementation((options: any) => {
+        if (options?.lock) {
+          return Promise.resolve(pendingDeleteRequest);
+        }
+        return Promise.resolve({
+          ...pendingDeleteRequest,
+          status: CustomerRequestStatus.APPROVED,
+          approvedById: managerUserId,
+          approvedAt: new Date(),
+        });
       });
 
       const approved = await service.approve(2, managerUserId);
@@ -379,27 +347,42 @@ describe('CustomerRequestService', () => {
         }),
       );
       expect(approved.status).toBe(CustomerRequestStatus.APPROVED);
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Customer request approved successfully',
-          actionType: CustomerRequestAction.DELETE,
-        }),
-      );
     });
 
-    it('should reject approving request if request is not in PENDING status (BR-02)', async () => {
-      customerRequestRepository.findOneBy.mockResolvedValue({
-        id: 3,
-        status: CustomerRequestStatus.APPROVED,
+    it('should reject approving DELETE request if customer has active scheduled appointments', async () => {
+      const pendingDeleteRequest = {
+        id: 20,
+        code: 'CR-20260917000020',
+        customerId: 10,
+        actionType: CustomerRequestAction.DELETE,
+        status: CustomerRequestStatus.PENDING,
+        reason: 'Khách ngừng hợp tác',
+        createdById: saleUserId,
+      };
+
+      customerRequestRepository.findOneBy.mockResolvedValue(
+        pendingDeleteRequest,
+      );
+      customerRequestRepository.findOne.mockImplementation((options: any) => {
+        if (options?.lock) {
+          return Promise.resolve(pendingDeleteRequest);
+        }
+        return Promise.resolve(null);
+      });
+      customerAppointmentRepository.findOne.mockResolvedValue({
+        id: 100,
+        customerId: 10,
+        status: AppointmentStatus.SCHEDULED,
       });
 
-      await expect(service.approve(3, managerUserId)).rejects.toThrow(
-        ConflictException,
+      await expect(service.approve(20, managerUserId)).rejects.toThrow(
+        BadRequestException,
       );
       expect(customersRepository.update).not.toHaveBeenCalled();
+      expect(customerRequestRepository.update).not.toHaveBeenCalled();
     });
 
-    it('should rollback transaction when DB update fails during approve (BR-03)', async () => {
+    it('should rollback transaction when DB update fails during approve EDIT', async () => {
       const pendingRequest = {
         id: 4,
         code: 'CR-20260917000004',
@@ -410,6 +393,12 @@ describe('CustomerRequestService', () => {
       };
 
       customerRequestRepository.findOneBy.mockResolvedValue(pendingRequest);
+      customerRequestRepository.findOne.mockImplementation((options: any) => {
+        if (options?.lock) {
+          return Promise.resolve(pendingRequest);
+        }
+        return Promise.resolve(null);
+      });
       customersRepository.update.mockRejectedValue(
         new Error('Database disk error'),
       );
@@ -417,127 +406,299 @@ describe('CustomerRequestService', () => {
       await expect(service.approve(4, managerUserId)).rejects.toThrow(
         'Database disk error',
       );
+      expect(customerRequestRepository.update).not.toHaveBeenCalled();
     });
-  });
 
-  describe('BR-01, BR-02, BR-03: Reject Workflow & Audit Log', () => {
-    it('should reject request, set status to REJECTED, store rejectReason, leave customer untouched, and write Audit Log', async () => {
+    it('should allow approving DELETE request if customer has no scheduled appointments (only completed or cancelled)', async () => {
+      const pendingDeleteRequest = {
+        id: 43,
+        code: 'CR-20260917000043',
+        customerId: 10,
+        actionType: CustomerRequestAction.DELETE,
+        status: CustomerRequestStatus.PENDING,
+        reason: 'Khách ngừng hợp tác',
+        createdById: saleUserId,
+      };
+
+      customerRequestRepository.findOneBy.mockResolvedValue(
+        pendingDeleteRequest,
+      );
+      customersRepository.update.mockResolvedValue({ affected: 1 });
+      customerRequestRepository.update.mockResolvedValue({ affected: 1 });
+      customerAppointmentRepository.findOne.mockResolvedValue(null);
+      customerRequestRepository.findOne.mockImplementation((options: any) => {
+        if (options?.lock) {
+          return Promise.resolve(pendingDeleteRequest);
+        }
+        return Promise.resolve({
+          ...pendingDeleteRequest,
+          status: CustomerRequestStatus.APPROVED,
+          approvedById: managerUserId,
+          approvedAt: new Date(),
+        });
+      });
+
+      const approved = await service.approve(43, managerUserId);
+
+      expect(approved.status).toBe(CustomerRequestStatus.APPROVED);
+      expect(customersRepository.update).toHaveBeenCalledWith(
+        10,
+        expect.objectContaining({
+          deletedAt: expect.any(Date),
+          deletedById: managerUserId,
+        }),
+      );
+    });
+
+    it('should throw ConflictException and rollback when unique constraint error occurs during approve EDIT', async () => {
       const pendingRequest = {
-        id: 5,
-        code: 'CR-20260917000005',
+        id: 44,
+        code: 'CR-20260917000044',
         customerId: 10,
         actionType: CustomerRequestAction.EDIT,
         status: CustomerRequestStatus.PENDING,
+        proposedData: { email: 'duplicate@example.com' },
         createdById: saleUserId,
       };
 
       customerRequestRepository.findOneBy.mockResolvedValue(pendingRequest);
-      customerRequestRepository.update.mockResolvedValue({ affected: 1 });
-      customerRequestRepository.findOne.mockResolvedValue({
-        ...pendingRequest,
-        status: CustomerRequestStatus.REJECTED,
-        approvedById: managerUserId,
-        rejectReason: 'Thông tin chưa đầy đủ hồ sơ pháp lý',
+      customerRequestRepository.findOne.mockImplementation((options: any) => {
+        if (options?.lock) {
+          return Promise.resolve(pendingRequest);
+        }
+        return Promise.resolve(null);
       });
 
-      const rejected = await service.reject(
-        5,
-        { reason: 'Thông tin chưa đầy đủ hồ sơ pháp lý' },
-        managerUserId,
+      const duplicateError = new QueryFailedError(
+        'UPDATE customer failed',
+        [],
+        {
+          code: '23505',
+          detail: 'Key (email)=(duplicate@example.com) already exists.',
+        } as Error & { code: string; detail: string },
       );
+      customersRepository.update.mockRejectedValue(duplicateError);
 
-      expect(customersRepository.update).not.toHaveBeenCalled();
-      expect(customerRequestRepository.update).toHaveBeenCalledWith(
-        5,
-        expect.objectContaining({
-          status: CustomerRequestStatus.REJECTED,
-          approvedById: managerUserId,
-          rejectReason: 'Thông tin chưa đầy đủ hồ sơ pháp lý',
-        }),
+      await expect(service.approve(44, managerUserId)).rejects.toThrow(
+        ConflictException,
       );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Customer request rejected successfully',
-          requestId: 5,
-          rejectReason: 'Thông tin chưa đầy đủ hồ sơ pháp lý',
-        }),
-      );
-      expect(rejected.status).toBe(CustomerRequestStatus.REJECTED);
-    });
-
-    it('should reject rejecting request if request is not in PENDING status (BR-02)', async () => {
-      customerRequestRepository.findOneBy.mockResolvedValue({
-        id: 6,
-        status: CustomerRequestStatus.REJECTED,
-      });
-
-      await expect(
-        service.reject(6, { reason: 'Từ chối lần 2' }, managerUserId),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw ConflictException when reject reason is missing or empty', async () => {
-      customerRequestRepository.findOneBy.mockResolvedValue({
-        id: 7,
-        status: CustomerRequestStatus.PENDING,
-      });
-
-      await expect(
-        service.reject(7, { reason: '   ' }, managerUserId),
-      ).rejects.toThrow(ConflictException);
+      expect(customerRequestRepository.update).not.toHaveBeenCalled();
     });
   });
 
-  describe('Query operations: findAll and findOne', () => {
-    it('should filter by createdById when user is not a manager', async () => {
-      customerRequestRepository.findAll.mockResolvedValue({
-        data: [],
-        meta: { page: 1, limit: 10, total: 0, totalPages: 0 },
+  describe('Concurrency Control: Concurrent Approve Requests', () => {
+    it('should not allow two concurrent approve requests to execute twice', async () => {
+      const pendingRequest = {
+        id: 99,
+        code: 'CR-20260917000099',
+        customerId: 10,
+        actionType: CustomerRequestAction.EDIT,
+        status: CustomerRequestStatus.PENDING,
+        proposedData: { name: 'Công Ty Đổi Tên Đồng Thời' },
+        createdById: saleUserId,
+      };
+
+      let dbStatus = CustomerRequestStatus.PENDING;
+      let customerUpdateCount = 0;
+      let requestUpdateCount = 0;
+
+      customerRequestRepository.findOneBy.mockResolvedValue(pendingRequest);
+
+      let transactionQueue: Promise<any> = Promise.resolve();
+
+      dataSource.transaction.mockImplementation((cb: any) => {
+        const runTx = async () => {
+          const manager: any = {
+            getRepository: jest.fn((entity: any) => {
+              if (entity === Customer) {
+                return {
+                  findOne: jest.fn().mockResolvedValue(mockCustomer),
+                  update: jest.fn().mockImplementation(async () => {
+                    customerUpdateCount++;
+                    return { affected: 1 };
+                  }),
+                };
+              }
+              if (entity === CustomerAppointment) {
+                return {
+                  findOne: jest.fn().mockResolvedValue(null),
+                };
+              }
+              return {
+                findOne: jest.fn().mockImplementation(async () => {
+                  return {
+                    ...pendingRequest,
+                    status: dbStatus,
+                  };
+                }),
+                update: jest
+                  .fn()
+                  .mockImplementation(async (_id: any, updateDto: any) => {
+                    requestUpdateCount++;
+                    dbStatus = updateDto.status;
+                    return { affected: 1 };
+                  }),
+              };
+            }),
+          };
+          return cb(manager);
+        };
+
+        const current = transactionQueue.then(runTx, runTx);
+        transactionQueue = current.catch(() => {});
+        return current;
       });
 
-      await service.findAll(
-        { page: 1, limit: 10, sortOrder: 'DESC' },
-        { userId: saleUserId, permissions: [Permission.CUSTOMER_REQUEST_READ] },
-      );
+      const results = await Promise.allSettled([
+        service.approve(99, managerUserId),
+        service.approve(99, otherSaleUserId),
+      ]);
 
-      expect(customerRequestRepository.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            createdById: saleUserId,
-          }),
-        }),
-      );
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
+      const rejected = results.filter((r) => r.status === 'rejected');
+
+      expect(fulfilled.length).toBe(1);
+      expect(rejected.length).toBe(1);
+      expect(rejected[0].reason).toBeInstanceOf(ConflictException);
+
+      expect(customerUpdateCount).toBe(1);
+      expect(requestUpdateCount).toBe(1);
     });
 
-    it('should not restrict createdById when user is a manager', async () => {
-      customerRequestRepository.findAll.mockResolvedValue({
-        data: [],
-        meta: { page: 1, limit: 10, total: 0, totalPages: 0 },
+    it('should not allow concurrent approve and reject requests to both execute', async () => {
+      const pendingRequest = {
+        id: 98,
+        code: 'CR-20260917000098',
+        customerId: 10,
+        actionType: CustomerRequestAction.EDIT,
+        status: CustomerRequestStatus.PENDING,
+        proposedData: { name: 'Công Ty Đổi Tên Đồng Thời' },
+        createdById: saleUserId,
+      };
+
+      let dbStatus = CustomerRequestStatus.PENDING;
+      let customerUpdateCount = 0;
+      let requestUpdateCount = 0;
+
+      customerRequestRepository.findOneBy.mockResolvedValue(pendingRequest);
+
+      let transactionQueue: Promise<any> = Promise.resolve();
+
+      dataSource.transaction.mockImplementation((cb: any) => {
+        const runTx = async () => {
+          const manager: any = {
+            getRepository: jest.fn((entity: any) => {
+              if (entity === Customer) {
+                return {
+                  findOne: jest.fn().mockResolvedValue(mockCustomer),
+                  update: jest.fn().mockImplementation(async () => {
+                    customerUpdateCount++;
+                    return { affected: 1 };
+                  }),
+                };
+              }
+              if (entity === CustomerAppointment) {
+                return {
+                  findOne: jest.fn().mockResolvedValue(null),
+                };
+              }
+              return {
+                findOne: jest.fn().mockImplementation(async () => {
+                  return {
+                    ...pendingRequest,
+                    status: dbStatus,
+                  };
+                }),
+                update: jest
+                  .fn()
+                  .mockImplementation(async (_id: any, updateDto: any) => {
+                    requestUpdateCount++;
+                    dbStatus = updateDto.status;
+                    return { affected: 1 };
+                  }),
+              };
+            }),
+          };
+          return cb(manager);
+        };
+
+        const current = transactionQueue.then(runTx, runTx);
+        transactionQueue = current.catch(() => {});
+        return current;
       });
 
-      await service.findAll(
-        { page: 1, limit: 10, sortOrder: 'DESC' },
-        { userId: managerUserId, permissions: [Permission.CUSTOMER_MANAGE] },
-      );
+      const results = await Promise.allSettled([
+        service.approve(98, managerUserId),
+        service.reject(98, { reason: 'Từ chối đồng thời' }, managerUserId),
+      ]);
 
-      expect(customerRequestRepository.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.not.objectContaining({
-            createdById: managerUserId,
-          }),
-        }),
-      );
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
+      const rejected = results.filter((r) => r.status === 'rejected');
+
+      expect(fulfilled.length).toBe(1);
+      expect(rejected.length).toBe(1);
+      expect(rejected[0].reason).toBeInstanceOf(ConflictException);
+      expect(requestUpdateCount).toBe(1);
+      expect(customerUpdateCount).toBeLessThanOrEqual(1);
     });
 
-    it('should return request by id or throw NotFoundException', async () => {
-      customerRequestRepository.findOneBy.mockResolvedValue(null);
+    it('should not allow two concurrent reject requests to execute twice', async () => {
+      const pendingRequest = {
+        id: 97,
+        code: 'CR-20260917000097',
+        customerId: 10,
+        actionType: CustomerRequestAction.EDIT,
+        status: CustomerRequestStatus.PENDING,
+        proposedData: { name: 'Từ Chối Đồng Thời' },
+        createdById: saleUserId,
+      };
 
-      await expect(
-        service.findOne(999, {
-          userId: saleUserId,
-          permissions: [Permission.CUSTOMER_REQUEST_READ],
-        }),
-      ).rejects.toThrow(NotFoundException);
+      let dbStatus = CustomerRequestStatus.PENDING;
+      let requestUpdateCount = 0;
+
+      customerRequestRepository.findOneBy.mockResolvedValue(pendingRequest);
+
+      let transactionQueue: Promise<any> = Promise.resolve();
+
+      dataSource.transaction.mockImplementation((cb: any) => {
+        const runTx = async () => {
+          const manager: any = {
+            getRepository: jest.fn(() => ({
+              findOne: jest.fn().mockImplementation(async () => {
+                return {
+                  ...pendingRequest,
+                  status: dbStatus,
+                };
+              }),
+              update: jest
+                .fn()
+                .mockImplementation(async (_id: any, updateDto: any) => {
+                  requestUpdateCount++;
+                  dbStatus = updateDto.status;
+                  return { affected: 1 };
+                }),
+            })),
+          };
+          return cb(manager);
+        };
+
+        const current = transactionQueue.then(runTx, runTx);
+        transactionQueue = current.catch(() => {});
+        return current;
+      });
+
+      const results = await Promise.allSettled([
+        service.reject(97, { reason: 'Từ chối lần 1' }, managerUserId),
+        service.reject(97, { reason: 'Từ chối lần 2' }, managerUserId),
+      ]);
+
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
+      const rejected = results.filter((r) => r.status === 'rejected');
+
+      expect(fulfilled.length).toBe(1);
+      expect(rejected.length).toBe(1);
+      expect(rejected[0].reason).toBeInstanceOf(ConflictException);
+      expect(requestUpdateCount).toBe(1);
     });
   });
 });

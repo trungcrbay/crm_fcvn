@@ -4,6 +4,7 @@ import {
   CustomerRequestSchema,
   GetCustomerRequestsQuerySchema,
   GetCustomerRequestsResSchema,
+  GetDetailCustomerRequestsResSchema,
   RejectCustomerRequestBodySchema,
 } from './customer-request.model';
 
@@ -25,4 +26,7 @@ export class GetCustomerRequestsQueryDTO extends createZodDto(
 
 export class GetCustomerRequestsResDTO extends createZodDto(
   GetCustomerRequestsResSchema,
+) {}
+export class GetDetailCustomerRequestsResDTO extends createZodDto(
+  GetDetailCustomerRequestsResSchema,
 ) {}

@@ -25,6 +25,8 @@ import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.mod
 import { PurchaseOrderItemModule } from './modules/purchase-order-item/purchase-order-item.module';
 import { PurchaseRequestModule } from './modules/purchase-request/purchase-request.module';
 import { CustomerRequestModule } from './modules/customer-request/customer-request.module';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { NotificationModule } from './modules/notifications/notification.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './shared/guard/throttler.guard';
@@ -49,6 +51,8 @@ import { MediaModule } from './modules/media/media.module';
     RolesModule,
     CustomersModule,
     CustomerRequestModule,
+    AuditLogModule,
+    NotificationModule,
     DepartmentsModule,
     SharedModule,
     AuthModule,

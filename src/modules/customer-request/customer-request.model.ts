@@ -5,6 +5,7 @@ import {
   CustomerRequestAction,
   CustomerRequestStatus,
 } from '../../shared/constant/customer-request.constant';
+import { UserPublicSchema } from '../users/user.model';
 
 export const CustomerRequestSchema = z.object({
   id: z.number(),
@@ -104,9 +105,25 @@ export const GetCustomerRequestsQuerySchema = SharedQuerySchema.extend({
 });
 
 export const GetCustomerRequestsResSchema = z.object({
-  data: z.array(CustomerRequestSchema),
+  data: z.array(
+    CustomerRequestSchema.extend({
+      createdBy: UserPublicSchema,
+      approvedBy: UserPublicSchema,
+    } as any).omit({
+      createdById: true,
+    }),
+  ),
   meta: PaginationResSchema,
 });
+
+export const GetDetailCustomerRequestsResSchema = z.object(
+  CustomerRequestSchema.extend({
+    createdBy: UserPublicSchema,
+    approvedBy: UserPublicSchema,
+  } as any).omit({
+    createdById: true,
+  }),
+);
 
 export type CustomerRequestType = z.infer<typeof CustomerRequestSchema>;
 export type CreateCustomerRequestBodyType = z.infer<

@@ -36,6 +36,7 @@ import { CustomerRequestService } from './customer-request.service';
 import { CustomerRequest } from './customer-request.entity';
 import {
   CreateCustomerRequestBodyDTO,
+  GetCustomerRequestsResDTO,
   RejectCustomerRequestBodyDTO,
 } from './customer-request.dto';
 import {
@@ -46,6 +47,7 @@ import {
   CustomerRequestAction,
   CustomerRequestStatus,
 } from '../../shared/constant/customer-request.constant';
+import { ZodSerializerDto } from 'nestjs-zod';
 
 @SkipThrottle()
 @Controller('customer-requests')
@@ -159,6 +161,7 @@ export class CustomerRequestController {
   }
 
   @Get()
+  @ZodSerializerDto(GetCustomerRequestsResDTO)
   @Permissions([
     Permission.CUSTOMER_REQUEST_READ,
     Permission.CUSTOMER_REQUEST_MANAGE,
