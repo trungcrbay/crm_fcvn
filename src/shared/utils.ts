@@ -38,6 +38,27 @@ export function generatePurchaseRequestCode(): string {
   return `PR-${datePart}${randomPart}`;
 }
 
+export function generateCustomerRequestCode(): string {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const datePart = `${year}${month}${day}`;
+
+  const randomPart = Math.floor(100000 + Math.random() * 900000).toString();
+
+  return `CR-${datePart}${randomPart}`;
+}
+
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+export function deleteFields<T extends object>(obj: T, fields: (keyof T)[]): T {
+  fields.forEach((field) => {
+    delete obj[field];
+  });
+
+  return obj;
 }

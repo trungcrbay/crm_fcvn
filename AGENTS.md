@@ -56,8 +56,8 @@ npm run start:dev        # Khởi động dev server với cơ chế hot reload
 npm run build            # Biên dịch TypeScript sang dist/
 npm run lint             # Quét và tự động sửa lỗi ESLint
 npm run typecheck        # Kiểm tra kiểu TypeScript (tsc --noEmit)
-npm test                 # Chạy unit test với Jest
-npm run test:e2e         # Chạy integration test đầu cuối
+npm test                 # Chạy unit test với Jest (rootDir: src, regex: *.spec.ts)
+npx jest --config test/jest-e2e.json --no-coverage  # Chạy E2E test trong thư mục test/
 ```
 
 ---
@@ -180,6 +180,15 @@ npm run test:e2e         # Chạy integration test đầu cuối
 - **Suppliers & Supplier Groups**:
   - Quản lý nhà cung cấp và nhóm nhà cung cấp.
   - Cho phép phân nhóm nhà cung cấp hàng loạt và thay đổi trạng thái kích hoạt.
+- **Customer Request (Đề nghị Sửa/Xóa Khách hàng)**:
+  - Hoạt động theo State Machine: `PENDING` -> `APPROVED` hoặc `REJECTED`.
+  - Chỉ Sale phụ trách (hoặc manager) mới được tạo request cho khách hàng đó.
+  - Không cho phép tồn tại 2 request `PENDING` cùng loại (`actionType`) trên cùng một khách hàng.
+  - Khi `APPROVE EDIT`: áp dụng `proposedData` vào bảng `customers` trong transaction, ghi diff audit log.
+  - Khi `APPROVE DELETE`: soft-delete khách hàng; bị chặn nếu còn lịch hẹn `SCHEDULED`.
+  - Khi `REJECT`: khách hàng không bị thay đổi; bắt buộc phải có `rejectReason`.
+  - Toàn bộ quyết định (approve/reject) dùng pessimistic write lock để chống race condition.
+  - Sau mỗi quyết định, tạo `AuditLog` chi tiết và gửi `Notification` đến người tạo request.
 - **Purchase Request (Đề nghị Mua hàng)**:
   - Hoạt động theo mô hình State Machine nghiêm ngặt: `DRAFT` -> `PENDING_APPROVAL` -> `APPROVED` hoặc `REJECTED`.
   - Toàn bộ thao tác chuyển trạng thái phải được ghi nhận vào bảng `purchase_request_histories` để lưu vết kiểm toán.
@@ -194,21 +203,24 @@ npm run test:e2e         # Chạy integration test đầu cuối
 
 ## 9. Module Map
 
-| Module             | Base Route              | Chức năng chính                                            | Ghi chú kiến trúc                                  |
-| ------------------ | ----------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
-| `auth`             | `/v1/auth`              | Đăng nhập, đăng xuất, cấp mới access token                 | Tích hợp Throttler và RefreshTokenRepository       |
-| `cache`            | Không có                | Cung cấp CacheService toàn cục qua Redis                   | `@Global()`, sử dụng Keyv                          |
-| `customers`        | `/v1/customers`         | Quản lý danh mục khách hàng và liên hệ                     | Module chuẩn mẫu cho CRUD thông thường             |
-| `departments`      | `/v1/departments`       | Quản lý cơ cấu phòng ban nội bộ                            | Có export service và repository cho module khác    |
-| `media`            | `/v1/media`             | Upload ảnh S3, phục vụ tệp tĩnh, tạo Presigned URL         | Dọn dẹp tệp tạm tự động, kết nối S3Service         |
-| `profile`          | `/v1/profile`           | Xem và cập nhật thông tin cá nhân tài khoản đang đăng nhập | Tái sử dụng UsersRepository                        |
-| `purchase-order`   | `/v1/purchase-orders`   | Tạo và quản lý đơn đặt hàng                                | Module chuẩn mẫu về Transaction và Idempotency     |
-| `purchase-request` | `/v1/purchase-requests` | Luồng duyệt và lịch sử phê duyệt đề nghị mua hàng          | Module chuẩn mẫu về State Machine và Audit History |
-| `refresh-token`    | Không có                | Quản lý vòng đời refresh token                             | Chỉ chứa Entity và Repository, không có Controller |
-| `roles`            | `/v1/roles`             | Phân quyền vai trò và quản lý quyền hạn                    | Tích hợp cơ chế cache danh sách quyền vào Redis    |
-| `supplier`         | `/v1/suppliers`         | Quản lý nhà cung cấp và đối tác                            | Route số nhiều `suppliers`                         |
-| `supplier-group`   | `/v1/supplier-groups`   | Phân nhóm và phân bổ nhà cung cấp                          | Sử dụng chung dữ liệu với supplier repository      |
-| `users`            | `/v1/users`             | Quản lý tài khoản, mã nhân viên và mật khẩu                | Tự động băm mật khẩu với bcrypt                    |
+| Module             | Base Route              | Chức năng chính                                            | Ghi chú kiến trúc                                                         |
+| ------------------ | ----------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `audit-log`        | Không có                | Ghi nhận audit trail mọi thao tác ghi dữ liệu              | `@Global()`, inject `AuditLogService` vào bất kỳ module nào cần           |
+| `auth`             | `/v1/auth`              | Đăng nhập, đăng xuất, cấp mới access token                 | Tích hợp Throttler và RefreshTokenRepository                              |
+| `cache`            | Không có                | Cung cấp CacheService toàn cục qua Redis                   | `@Global()`, sử dụng Keyv                                                 |
+| `customer-request` | `/v1/customer-requests` | Luồng đề nghị sửa/xóa khách hàng, duyệt/từ chối            | State Machine PENDING->APPROVED/REJECTED, pessimistic lock, audit, notify |
+| `customers`        | `/v1/customers`         | Quản lý danh mục khách hàng và liên hệ                     | Module chuẩn mẫu cho CRUD thông thường                                    |
+| `departments`      | `/v1/departments`       | Quản lý cơ cấu phòng ban nội bộ                            | Có export service và repository cho module khác                           |
+| `media`            | `/v1/media`             | Upload ảnh S3, phục vụ tệp tĩnh, tạo Presigned URL         | Dọn dẹp tệp tạm tự động, kết nối S3Service                                |
+| `notifications`    | `/v1/notifications`     | Tạo, đọc, đánh dấu đã đọc thông báo trong hệ thống         | Bảng `notifications` + `notification_recipients`; hỗ trợ phân trang       |
+| `profile`          | `/v1/profile`           | Xem và cập nhật thông tin cá nhân tài khoản đang đăng nhập | Tái sử dụng UsersRepository                                               |
+| `purchase-order`   | `/v1/purchase-orders`   | Tạo và quản lý đơn đặt hàng                                | Module chuẩn mẫu về Transaction và Idempotency                            |
+| `purchase-request` | `/v1/purchase-requests` | Luồng duyệt và lịch sử phê duyệt đề nghị mua hàng          | Module chuẩn mẫu về State Machine và Audit History                        |
+| `refresh-token`    | Không có                | Quản lý vòng đời refresh token                             | Chỉ chứa Entity và Repository, không có Controller                        |
+| `roles`            | `/v1/roles`             | Phân quyền vai trò và quản lý quyền hạn                    | Tích hợp cơ chế cache danh sách quyền vào Redis                           |
+| `supplier`         | `/v1/suppliers`         | Quản lý nhà cung cấp và đối tác                            | Route số nhiều `suppliers`                                                |
+| `supplier-group`   | `/v1/supplier-groups`   | Phân nhóm và phân bổ nhà cung cấp                          | Sử dụng chung dữ liệu với supplier repository                             |
+| `users`            | `/v1/users`             | Quản lý tài khoản, mã nhân viên và mật khẩu                | Tự động băm mật khẩu với bcrypt                                           |
 
 ---
 
@@ -222,6 +234,8 @@ Trước khi hoàn thành bất kỳ nhiệm vụ nào, Agent bắt buộc phả
 - [ ] Mọi endpoint mới đều có đầy đủ Swagger decorator (`@ApiTags()`, `@ApiOperation()`, `@ApiOkResponse()`).
 - [ ] Lỗi xác thực đầu vào luôn trả về HTTP 422 (`UnprocessableEntityException`).
 - [ ] Các tác vụ ghi dữ liệu vào database đều có truyền thông tin `userId` phục vụ audit trail.
+- [ ] Các thao tác duyệt/từ chối/tạo bản ghi quan trọng đều gọi `AuditLogService.log()` với đủ `actionById`, `refModel`, `targetId`, `diffs`, `metadata`.
+- [ ] Kết quả duyệt/từ chối quan trọng đều gửi `NotificationService.createNotification()` đến đúng `recipientIds`.
 - [ ] Không có file mới nào được tạo hoặc chỉnh sửa bên trong thư mục `.agents/`.
 - [ ] Không có dấu gạch ngang dài (em dash) xuất hiện trong các file tài liệu hoặc code vừa chỉnh sửa.
 
