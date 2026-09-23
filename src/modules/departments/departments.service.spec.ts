@@ -2,17 +2,38 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { DepartmentStatus } from 'src/shared/constant/department.constant';
 import { DepartmentsService } from './departments.service';
+import { DepartmentsRepository } from './departments.repository';
+import { Department } from './department.entity';
+
+type MockRepository = jest.Mocked<
+  Pick<
+    DepartmentsRepository,
+    'create' | 'findAll' | 'findOne' | 'update' | 'remove'
+  >
+>;
+
+const buildRepository = (): MockRepository => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findOne: jest.fn(),
+  update: jest.fn(),
+  remove: jest.fn(),
+});
+
+const buildService = (repo: MockRepository): DepartmentsService =>
+  new DepartmentsService(repo as unknown as DepartmentsRepository);
+
+const makeDepartment = (overrides: Partial<Department>): Department =>
+  ({
+    id: 1,
+    departmentCode: 'DEPT_DEFAULT',
+    name: 'Default Department',
+    status: DepartmentStatus.ACTIVE,
+    ...overrides,
+  }) as Department;
 
 describe('DepartmentsService', () => {
   const userId = 1;
-
-  const buildRepository = () => ({
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  });
 
   const duplicateError = () =>
     new QueryFailedError('INSERT INTO departments failed', [], {
@@ -26,18 +47,20 @@ describe('DepartmentsService', () => {
   describe('create', () => {
     it('should create a department successfully', async () => {
       const repository = buildRepository();
-      repository.create.mockResolvedValue({
-        id: 1,
-        departmentCode: 'DEPT_IT',
-        name: 'Phòng Công nghệ thông tin',
-        description: 'Mô tả phòng IT',
-        status: DepartmentStatus.ACTIVE,
-        createdById: userId,
-        createdAt: '2026-08-23T00:00:00.000Z',
-        updatedAt: '2026-08-23T00:00:00.000Z',
-      });
+      repository.create.mockResolvedValue(
+        makeDepartment({
+          id: 1,
+          departmentCode: 'DEPT_IT',
+          name: 'Phòng Công nghệ thông tin',
+          description: 'Mô tả phòng IT',
+          status: DepartmentStatus.ACTIVE,
+          createdById: userId,
+          createdAt: new Date('2026-08-23T00:00:00.000Z'),
+          updatedAt: new Date('2026-08-23T00:00:00.000Z'),
+        }),
+      );
 
-      const service = new DepartmentsService(repository as any);
+      const service = buildService(repository);
 
       const result = await service.create(
         {
@@ -64,7 +87,7 @@ describe('DepartmentsService', () => {
       const repository = buildRepository();
       repository.create.mockRejectedValue(duplicateError());
 
-      const service = new DepartmentsService(repository as any);
+      const service = buildService(repository);
 
       await expect(
         service.create(
@@ -82,15 +105,15 @@ describe('DepartmentsService', () => {
   describe('findOne', () => {
     it('should return a department when found', async () => {
       const repository = buildRepository();
-      const mockDept = {
+      const mockDept = makeDepartment({
         id: 1,
         departmentCode: 'DEPT_IT',
         name: 'Phòng IT',
         status: DepartmentStatus.ACTIVE,
-      };
+      });
       repository.findOne.mockResolvedValue(mockDept);
 
-      const service = new DepartmentsService(repository as any);
+      const service = buildService(repository);
       const result = await service.findOne(1);
 
       expect(result).toEqual(mockDept);
@@ -101,7 +124,7 @@ describe('DepartmentsService', () => {
       const repository = buildRepository();
       repository.findOne.mockResolvedValue(null);
 
-      const service = new DepartmentsService(repository as any);
+      const service = buildService(repository);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
@@ -115,7 +138,7 @@ describe('DepartmentsService', () => {
         meta: { page: 1, limit: 10, total: 0, totalPages: 0 },
       });
 
-      const service = new DepartmentsService(repository as any);
+      const service = buildService(repository);
       await service.findAll({ page: 1, limit: 10, sortOrder: 'ASC' });
 
       expect(repository.findAll).toHaveBeenCalled();
@@ -125,18 +148,18 @@ describe('DepartmentsService', () => {
   describe('update', () => {
     it('should update department successfully', async () => {
       const repository = buildRepository();
-      repository.findOne.mockResolvedValue({
-        id: 1,
-        departmentCode: 'DEPT_IT',
-        name: 'Phòng IT',
-      });
-      repository.update.mockResolvedValue({
-        id: 1,
-        departmentCode: 'DEPT_IT',
-        name: 'Phòng IT Mới',
-      });
+      repository.findOne.mockResolvedValue(
+        makeDepartment({ id: 1, departmentCode: 'DEPT_IT', name: 'Phòng IT' }),
+      );
+      repository.update.mockResolvedValue(
+        makeDepartment({
+          id: 1,
+          departmentCode: 'DEPT_IT',
+          name: 'Phòng IT Mới',
+        }),
+      );
 
-      const service = new DepartmentsService(repository as any);
+      const service = buildService(repository);
       const result = await service.update(
         1,
         { name: '  Phòng IT Mới  ' },
@@ -151,13 +174,12 @@ describe('DepartmentsService', () => {
   describe('remove', () => {
     it('should soft delete department', async () => {
       const repository = buildRepository();
-      repository.findOne.mockResolvedValue({
-        id: 1,
-        departmentCode: 'DEPT_IT',
-      });
+      repository.findOne.mockResolvedValue(
+        makeDepartment({ id: 1, departmentCode: 'DEPT_IT' }),
+      );
       repository.remove.mockResolvedValue(undefined);
 
-      const service = new DepartmentsService(repository as any);
+      const service = buildService(repository);
       const result = await service.remove(1, userId);
 
       expect(result).toEqual({ message: 'Xóa phòng ban thành công' });

@@ -1,6 +1,10 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { CustomersService } from './customers.service';
+import { CustomersRepository } from './customers.repository';
+import { UsersRepository } from '../users/users.repository';
+import { Customer } from './customer.entity';
+import { User } from '../users/user.entity';
 import {
   CustomerStatus,
   CustomerType,
@@ -8,30 +12,74 @@ import {
 } from '../../shared/constant/customer.constant';
 import { UserStatus } from '../../shared/constant/user.constant';
 import { Permission } from '../../shared/constant/permission.constant';
+import { PinoLogger } from 'nestjs-pino';
+
+type MockRepository = jest.Mocked<
+  Pick<
+    CustomersRepository,
+    'create' | 'findAll' | 'findOne' | 'findOneBy' | 'update' | 'remove'
+  >
+>;
+type MockUsersRepository = jest.Mocked<Pick<UsersRepository, 'findOne'>>;
+type MockLogger = jest.Mocked<
+  Pick<PinoLogger, 'setContext' | 'info' | 'error' | 'warn'>
+>;
+
+const buildRepository = (): MockRepository => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findOne: jest.fn(),
+  findOneBy: jest.fn(),
+  update: jest.fn(),
+  remove: jest.fn(),
+});
+
+const buildUsersRepository = (resolvedUser?: object): MockUsersRepository => ({
+  findOne: jest.fn().mockResolvedValue(resolvedUser ?? null),
+});
+
+const buildLogger = (): MockLogger => ({
+  setContext: jest.fn(),
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+});
+
+const buildService = (
+  repo: MockRepository,
+  usersRepo: MockUsersRepository,
+  logger: MockLogger = buildLogger(),
+): CustomersService =>
+  new CustomersService(
+    repo as unknown as CustomersRepository,
+    usersRepo as unknown as UsersRepository,
+    logger as unknown as PinoLogger,
+  );
+
+/** Tạo mock Customer - chỉ cần truyền các field liên quan đến test case */
+const makeCustomer = (overrides: Partial<Customer>): Customer =>
+  ({
+    id: 1,
+    customerCode: 'CUS-000',
+    name: 'Default Customer',
+    customerType: CustomerType.INDIVIDUAL,
+    groupType: GroupType.NORMAL,
+    status: CustomerStatus.ACTIVE,
+    email: 'default@example.com',
+    phone: '0900000000',
+    ...overrides,
+  }) as Customer;
+
+/** Tạo mock User - chỉ cần truyền các field liên quan đến test case */
+const makeUser = (overrides: Partial<User>): User =>
+  ({
+    id: 1,
+    status: UserStatus.ACTIVE,
+    ...overrides,
+  }) as User;
 
 describe('CustomersService.create', () => {
   const userId = 4;
-
-  const buildRepository = () => ({
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  });
-
-  const buildUsersRepository = () => ({
-    findOne: jest
-      .fn()
-      .mockResolvedValue({ id: userId, status: UserStatus.ACTIVE }),
-  });
-
-  const mockLogger = {
-    setContext: jest.fn(),
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  };
 
   const duplicateError = () =>
     new QueryFailedError('INSERT INTO customer failed', [], {
@@ -44,26 +92,26 @@ describe('CustomersService.create', () => {
 
   it('should create a valid customer with trimmed values', async () => {
     const repository = buildRepository();
-    const usersRepository = buildUsersRepository();
-
-    repository.create.mockResolvedValue({
-      id: '1',
-      customerCode: 'CUS-001',
-      name: 'Alice',
-      email: 'alice@example.com',
-      phone: '0909123456',
-      address: 'HCM',
-      createdAt: new Date(),
-      createdById: userId,
-      updatedAt: new Date(),
-      updatedById: null,
+    const usersRepository = buildUsersRepository({
+      id: userId,
+      status: UserStatus.ACTIVE,
     });
 
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
+    repository.create.mockResolvedValue(
+      makeCustomer({
+        id: 1,
+        customerCode: 'CUS-001',
+        name: 'Alice',
+        email: 'alice@example.com',
+        phone: '0909123456',
+        address: 'HCM',
+        createdAt: new Date(),
+        createdById: userId,
+        updatedAt: new Date(),
+      }),
     );
+
+    const service = buildService(repository, usersRepository);
 
     const result = await service.create(
       {
@@ -99,28 +147,24 @@ describe('CustomersService.create', () => {
   it('should assign explicit saleOwnerId when manager provides it', async () => {
     const repository = buildRepository();
     const explicitSaleOwnerId = 99;
-    const usersRepository = {
-      findOne: jest.fn().mockResolvedValue({
-        id: explicitSaleOwnerId,
-        status: UserStatus.ACTIVE,
-      }),
-    };
-
-    repository.create.mockResolvedValue({
-      id: '2',
-      customerCode: 'CUS-002',
-      name: 'Bob',
-      email: 'bob@example.com',
-      phone: '0912345678',
-      saleOwnerId: explicitSaleOwnerId,
-      createdById: userId,
+    const usersRepository = buildUsersRepository({
+      id: explicitSaleOwnerId,
+      status: UserStatus.ACTIVE,
     });
 
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
+    repository.create.mockResolvedValue(
+      makeCustomer({
+        id: 2,
+        customerCode: 'CUS-002',
+        name: 'Bob',
+        email: 'bob@example.com',
+        phone: '0912345678',
+        saleOwnerId: explicitSaleOwnerId,
+        createdById: userId,
+      }),
     );
+
+    const service = buildService(repository, usersRepository);
 
     const result = await service.create(
       {
@@ -149,28 +193,24 @@ describe('CustomersService.create', () => {
   it('should ignore explicit saleOwnerId and force current userId when user lacks CUSTOMER_MANAGE', async () => {
     const repository = buildRepository();
     const explicitSaleOwnerId = 99;
-    const usersRepository = {
-      findOne: jest.fn().mockResolvedValue({
-        id: userId,
-        status: UserStatus.ACTIVE,
-      }),
-    };
-
-    repository.create.mockResolvedValue({
-      id: '3',
-      customerCode: 'CUS-003',
-      name: 'Charlie',
-      email: 'charlie@example.com',
-      phone: '0912345679',
-      saleOwnerId: userId,
-      createdById: userId,
+    const usersRepository = buildUsersRepository({
+      id: userId,
+      status: UserStatus.ACTIVE,
     });
 
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
+    repository.create.mockResolvedValue(
+      makeCustomer({
+        id: 3,
+        customerCode: 'CUS-003',
+        name: 'Charlie',
+        email: 'charlie@example.com',
+        phone: '0912345679',
+        saleOwnerId: userId,
+        createdById: userId,
+      }),
     );
+
+    const service = buildService(repository, usersRepository);
 
     const result = await service.create(
       {
@@ -198,17 +238,12 @@ describe('CustomersService.create', () => {
 
   it('should throw BadRequestException if saleOwner does not exist or is inactive', async () => {
     const repository = buildRepository();
-    const usersRepository = {
-      findOne: jest
-        .fn()
-        .mockResolvedValue({ id: 99, status: UserStatus.INACTIVE }),
-    };
+    const usersRepository = buildUsersRepository({
+      id: 99,
+      status: UserStatus.INACTIVE,
+    });
 
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     await expect(
       service.create(
@@ -231,14 +266,13 @@ describe('CustomersService.create', () => {
 
   it('should throw ConflictException when email or phone already exists', async () => {
     const repository = buildRepository();
-    const usersRepository = buildUsersRepository();
+    const usersRepository = buildUsersRepository({
+      id: userId,
+      status: UserStatus.ACTIVE,
+    });
     repository.create.mockRejectedValue(duplicateError());
 
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     await expect(
       service.create(
@@ -259,15 +293,14 @@ describe('CustomersService.create', () => {
 
   it('should rethrow non-unique repository errors', async () => {
     const repository = buildRepository();
-    const usersRepository = buildUsersRepository();
+    const usersRepository = buildUsersRepository({
+      id: userId,
+      status: UserStatus.ACTIVE,
+    });
     const error = new Error('DB failure');
     repository.create.mockRejectedValue(error);
 
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     await expect(
       service.create(
@@ -288,38 +321,21 @@ describe('CustomersService.create', () => {
 });
 
 describe('CustomersService.findAll', () => {
-  const buildRepository = () => ({
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  });
-
-  const buildUsersRepository = () => ({
-    findOne: jest.fn(),
-  });
-
-  const mockLogger = {
-    setContext: jest.fn(),
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  };
-
   describe('Đầu ra 2: Test phân quyền & phạm vi Sales Owner', () => {
     it('Sale chỉ thấy khách thuộc quyền (tự động gán saleOwnerId = currentUserId khi chỉ có CUSTOMER_READ)', async () => {
       const repository = buildRepository();
       const usersRepository = buildUsersRepository();
-      const service = new CustomersService(
-        repository as any,
-        usersRepository as any,
-        mockLogger as any,
-      );
+      const service = buildService(repository, usersRepository);
 
       const saleUserId = 10;
       const paginatedMockResult = {
-        data: [{ id: 1, name: 'Khách của Sale 10', saleOwnerId: saleUserId }],
+        data: [
+          makeCustomer({
+            id: 1,
+            name: 'Khách của Sale 10',
+            saleOwnerId: saleUserId,
+          }),
+        ],
         meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
       };
       repository.findAll.mockResolvedValue(paginatedMockResult);
@@ -328,7 +344,7 @@ describe('CustomersService.findAll', () => {
         { page: 1, limit: 10, sortOrder: 'ASC' },
         {
           userId: saleUserId,
-          permissions: [Permission.CUSTOMER_READ], // Không có CUSTOMER_MANAGE
+          permissions: [Permission.CUSTOMER_READ],
         },
       );
 
@@ -345,11 +361,7 @@ describe('CustomersService.findAll', () => {
     it('Sale cố tình truyền saleOwnerId của người khác thì hệ thống vẫn ép theo quyền của Sale đó', async () => {
       const repository = buildRepository();
       const usersRepository = buildUsersRepository();
-      const service = new CustomersService(
-        repository as any,
-        usersRepository as any,
-        mockLogger as any,
-      );
+      const service = buildService(repository, usersRepository);
 
       const saleUserId = 10;
       const otherSaleId = 99;
@@ -362,11 +374,10 @@ describe('CustomersService.findAll', () => {
         { page: 1, limit: 10, sortOrder: 'ASC', saleOwnerId: otherSaleId },
         {
           userId: saleUserId,
-          permissions: [Permission.CUSTOMER_READ], // Sale thông thường
+          permissions: [Permission.CUSTOMER_READ],
         },
       );
 
-      // saleOwnerId phải là saleUserId (10), không phải otherSaleId (99)
       expect(repository.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -379,11 +390,7 @@ describe('CustomersService.findAll', () => {
     it('Quản lý có quyền CUSTOMER_MANAGE có thể xem toàn bộ hoặc lọc theo bất kỳ saleOwnerId', async () => {
       const repository = buildRepository();
       const usersRepository = buildUsersRepository();
-      const service = new CustomersService(
-        repository as any,
-        usersRepository as any,
-        mockLogger as any,
-      );
+      const service = buildService(repository, usersRepository);
 
       const managerUserId = 1;
       const targetSaleOwnerId = 25;
@@ -392,7 +399,6 @@ describe('CustomersService.findAll', () => {
         meta: { page: 1, limit: 10, total: 0, totalPages: 1 },
       });
 
-      // Trường hợp 1: Quản lý xem toàn bộ (không truyền saleOwnerId)
       await service.findAll(
         { page: 1, limit: 10, sortOrder: 'ASC' },
         {
@@ -409,7 +415,6 @@ describe('CustomersService.findAll', () => {
         }),
       );
 
-      // Trường hợp 2: Quản lý lọc theo saleOwnerId cụ thể
       await service.findAll(
         {
           page: 1,
@@ -437,14 +442,16 @@ describe('CustomersService.findAll', () => {
     it('Lọc chính xác theo GROUP_TYPE và CustomerStatus', async () => {
       const repository = buildRepository();
       const usersRepository = buildUsersRepository();
-      const service = new CustomersService(
-        repository as any,
-        usersRepository as any,
-        mockLogger as any,
-      );
+      const service = buildService(repository, usersRepository);
 
       repository.findAll.mockResolvedValue({
-        data: [{ id: 1, name: 'VIP Customer', groupType: GroupType.VIP }],
+        data: [
+          makeCustomer({
+            id: 1,
+            name: 'VIP Customer',
+            groupType: GroupType.VIP,
+          }),
+        ],
         meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
       });
 
@@ -478,11 +485,7 @@ describe('CustomersService.findAll', () => {
     it('Tìm kiếm tương đối theo name, email, customerCode và search', async () => {
       const repository = buildRepository();
       const usersRepository = buildUsersRepository();
-      const service = new CustomersService(
-        repository as any,
-        usersRepository as any,
-        mockLogger as any,
-      );
+      const service = buildService(repository, usersRepository);
 
       repository.findAll.mockResolvedValue({
         data: [],
@@ -520,11 +523,7 @@ describe('CustomersService.findAll', () => {
     it('Xử lý đúng khi kết quả rỗng', async () => {
       const repository = buildRepository();
       const usersRepository = buildUsersRepository();
-      const service = new CustomersService(
-        repository as any,
-        usersRepository as any,
-        mockLogger as any,
-      );
+      const service = buildService(repository, usersRepository);
 
       const emptyResult = {
         data: [],
@@ -543,43 +542,19 @@ describe('CustomersService.findAll', () => {
 });
 
 describe('CustomersService.findOne', () => {
-  const buildRepository = () => ({
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    findOneBy: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  });
-
-  const buildUsersRepository = () => ({
-    findOne: jest.fn(),
-  });
-
-  const mockLogger = {
-    setContext: jest.fn(),
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  };
-
   it('Sales xem đúng dữ liệu khách thuộc quyền sở hữu của mình', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     const saleUserId = 10;
     const customerId = 1;
-    const mockCustomer = {
+    const mockCustomer = makeCustomer({
       id: customerId,
       customerCode: 'CUS-001',
       name: 'Khách của Sale 10',
       saleOwnerId: saleUserId,
-    };
+    });
 
     repository.findOneBy.mockResolvedValue(mockCustomer);
 
@@ -606,20 +581,16 @@ describe('CustomersService.findOne', () => {
   it('Quản lý có CUSTOMER_MANAGE có thể xem khách của bất kỳ Sale nào', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     const managerUserId = 99;
     const customerId = 2;
-    const mockCustomer = {
+    const mockCustomer = makeCustomer({
       id: customerId,
       customerCode: 'CUS-002',
       name: 'Khách của ai đó',
       saleOwnerId: 10,
-    };
+    });
 
     repository.findOneBy.mockResolvedValue(mockCustomer);
 
@@ -634,7 +605,6 @@ describe('CustomersService.findOne', () => {
       }),
       expect.anything(),
     );
-    // Không được giới hạn saleOwnerId trong điều kiện lọc
     expect(repository.findOneBy).not.toHaveBeenCalledWith(
       expect.objectContaining({
         saleOwnerId: expect.anything(),
@@ -647,16 +617,11 @@ describe('CustomersService.findOne', () => {
   it('Đổi ID sang khách của Sale khác thì bị chặn và trả NotFoundException', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     const currentSaleId = 10;
     const otherCustomerOfOtherSaleId = 999;
 
-    // Khi query id = 999 kèm saleOwnerId = 10, DB không tìm thấy bản ghi nào
     repository.findOneBy.mockResolvedValue(null);
 
     await expect(
@@ -678,11 +643,7 @@ describe('CustomersService.findOne', () => {
   it('ID không tồn tại trong DB ném NotFoundException với thông điệp chuẩn', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     repository.findOneBy.mockResolvedValue(null);
 
@@ -700,11 +661,7 @@ describe('CustomersService.findOne', () => {
     const dbError = new Error('Database connection failed');
     repository.findOneBy.mockRejectedValue(dbError);
 
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     await expect(
       service.findOne(1, {
@@ -716,49 +673,27 @@ describe('CustomersService.findOne', () => {
 });
 
 describe('CustomersService.update', () => {
-  const buildRepository = () => ({
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    findOneBy: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  });
-
-  const buildUsersRepository = () => ({
-    findOne: jest.fn(),
-  });
-
-  const mockLogger = {
-    setContext: jest.fn(),
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  };
-
   it('Cho phép cập nhật thành công khi là Sales sở hữu khách hàng', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     const saleUserId = 10;
     const customerId = 1;
-    const existingCustomer = {
+    const existingCustomer = makeCustomer({
       id: customerId,
       name: 'Old Name',
       saleOwnerId: saleUserId,
-    };
+    });
 
     repository.findOneBy.mockResolvedValue(existingCustomer);
-    repository.update.mockResolvedValue({
-      ...existingCustomer,
-      name: 'New Name',
-      updatedById: saleUserId,
-    });
+    repository.update.mockResolvedValue(
+      makeCustomer({
+        ...existingCustomer,
+        name: 'New Name',
+        updatedById: saleUserId,
+      }),
+    );
 
     const result = await service.update(
       customerId,
@@ -782,16 +717,11 @@ describe('CustomersService.update', () => {
   it('Chặn Sales cập nhật khách hàng của Sales khác (Bảo vệ IDOR)', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     const currentSaleId = 10;
     const otherCustomerId = 99;
 
-    // findOneBy trả về null do saleOwnerId không khớp
     repository.findOneBy.mockResolvedValue(null);
 
     await expect(
@@ -811,19 +741,15 @@ describe('CustomersService.update', () => {
   it('Chặn Sales thường tự ý chuyển saleOwnerId sang người khác', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     const currentSaleId = 10;
     const customerId = 1;
-    const existingCustomer = {
+    const existingCustomer = makeCustomer({
       id: customerId,
       name: 'Existing Customer',
       saleOwnerId: currentSaleId,
-    };
+    });
 
     repository.findOneBy.mockResolvedValue(existingCustomer);
 
@@ -844,31 +770,28 @@ describe('CustomersService.update', () => {
   it('Quản lý có quyền CUSTOMER_MANAGE có thể cập nhật khách và chuyển saleOwnerId hợp lệ', async () => {
     const repository = buildRepository();
     const usersRepository = buildUsersRepository();
-    const service = new CustomersService(
-      repository as any,
-      usersRepository as any,
-      mockLogger as any,
-    );
+    const service = buildService(repository, usersRepository);
 
     const managerUserId = 1;
     const targetSaleId = 20;
     const customerId = 1;
-    const existingCustomer = {
+    const existingCustomer = makeCustomer({
       id: customerId,
       name: 'Existing Customer',
       saleOwnerId: 10,
-    };
+    });
 
     repository.findOneBy.mockResolvedValue(existingCustomer);
-    usersRepository.findOne.mockResolvedValue({
-      id: targetSaleId,
-      status: UserStatus.ACTIVE,
-    });
-    repository.update.mockResolvedValue({
-      ...existingCustomer,
-      saleOwnerId: targetSaleId,
-      updatedById: managerUserId,
-    });
+    usersRepository.findOne.mockResolvedValue(
+      makeUser({ id: targetSaleId, status: UserStatus.ACTIVE }),
+    );
+    repository.update.mockResolvedValue(
+      makeCustomer({
+        ...existingCustomer,
+        saleOwnerId: targetSaleId,
+        updatedById: managerUserId,
+      }),
+    );
 
     const result = await service.update(
       customerId,

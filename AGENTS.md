@@ -56,8 +56,11 @@ npm run start:dev        # Khởi động dev server với cơ chế hot reload
 npm run build            # Biên dịch TypeScript sang dist/
 npm run lint             # Quét và tự động sửa lỗi ESLint
 npm run typecheck        # Kiểm tra kiểu TypeScript (tsc --noEmit)
-npm test                 # Chạy unit test với Jest (rootDir: src, regex: *.spec.ts)
-npx jest --config test/jest-e2e.json --no-coverage  # Chạy E2E test trong thư mục test/
+
+# Test - chạy từ thư mục gốc của project
+npm test                                                  # Toàn bộ unit test (src/**/*.spec.ts)
+npx jest "customer-request.service.spec.ts" --no-coverage # Unit test riêng module customer-request
+npx jest --config test/jest-e2e.json --no-coverage        # Toàn bộ E2E test (test/**/*.e2e-spec.ts)
 ```
 
 ---
