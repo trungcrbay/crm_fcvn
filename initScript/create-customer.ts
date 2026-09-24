@@ -41,8 +41,8 @@ const loadEnvFile = () => {
 
 loadEnvFile();
 
-const TOTAL_CUSTOMERS = 2000;
-const BATCH_SIZE = 100;
+const TOTAL_CUSTOMERS = 1000000;
+const BATCH_SIZE = 2_000;
 
 const CREATED_BY_ID = 2;
 
@@ -115,7 +115,7 @@ const generateCustomer = (index: number): Partial<Customer> => {
     customerCode,
     name,
     email: `customer${batchId}_${index}@example.com`,
-    phone: `09${String(index).padStart(8, '0')}`,
+    phone: `09${batchId}${String(index).padStart(4, '0')}`,
     address: `${Math.floor(Math.random() * 200) + 1} Đường ${randomItem([
       'Láng',
       'Nguyễn Trãi',
@@ -170,3 +170,5 @@ async function seedCustomers() {
 }
 
 seedCustomers();
+
+// Từ root project -> run: npx ts-node initScript/create-customer.ts

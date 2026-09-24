@@ -30,7 +30,7 @@ export class User extends BaseEntity {
   @Column({ type: 'int', nullable: true })
   roleId: number;
 
-  @ManyToOne(() => Role, { nullable: true, eager: true })
+  @ManyToOne(() => Role, { nullable: true })
   @JoinColumn({ name: 'roleId' })
   role?: Role;
 

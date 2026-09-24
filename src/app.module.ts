@@ -31,6 +31,8 @@ import { DepartmentsModule } from './modules/departments/departments.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './shared/guard/throttler.guard';
 import { MediaModule } from './modules/media/media.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { CustomerRequestListener } from './listeners/customer-request.listener';
 
 @Module({
   imports: [
@@ -64,6 +66,7 @@ import { MediaModule } from './modules/media/media.module';
     PurchaseOrderItemModule,
     PurchaseRequestModule,
     MediaModule,
+    EventEmitterModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
@@ -93,6 +96,7 @@ import { MediaModule } from './modules/media/media.module';
       provide: APP_INTERCEPTOR,
       useClass: ZodSerializerInterceptor,
     },
+    CustomerRequestListener,
   ],
 })
 export class AppModule implements NestModule {

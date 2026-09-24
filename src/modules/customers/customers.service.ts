@@ -227,7 +227,6 @@ export class CustomersService {
       saleOwner: true,
       accountantInCharge: true,
       bookerInCharge: true,
-      appointments: true,
     });
 
     if (!customer) {

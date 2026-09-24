@@ -572,7 +572,6 @@ describe('CustomersService.findOne', () => {
         saleOwner: true,
         accountantInCharge: true,
         bookerInCharge: true,
-        appointments: true,
       }),
     );
     expect(result).toEqual(mockCustomer);

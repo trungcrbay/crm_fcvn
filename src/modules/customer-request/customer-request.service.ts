@@ -34,10 +34,12 @@ import {
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditLogModel } from '../audit-log/audit-log.constant';
 import { NotificationService } from '../notifications/notification.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
-  NotificationActionType,
-  NotificationType,
-} from '../notifications/notification.constant';
+  CustomerRequestApproveEvent,
+  CustomerRequestRejectEvent,
+} from 'src/events/customer-request.event';
+import { EVENT_CUSTOMER_REQUEST } from 'src/shared/constant/event.constant';
 
 @Injectable()
 export class CustomerRequestService {
@@ -48,6 +50,7 @@ export class CustomerRequestService {
     private readonly logger: PinoLogger,
     private readonly auditLogService: AuditLogService,
     private readonly notificationService: NotificationService,
+    private readonly eventEmitter?: EventEmitter2,
   ) {
     this.logger.setContext(CustomerRequestService.name);
   }
@@ -236,8 +239,11 @@ export class CustomerRequestService {
       );
     }
 
+    let event: CustomerRequestApproveEvent | undefined;
+    let updatedRequest: CustomerRequest;
+
     try {
-      return await this.dataSource.transaction(async (manager) => {
+      updatedRequest = await this.dataSource.transaction(async (manager) => {
         const customerRepo = manager.getRepository(Customer);
         const requestRepo = manager.getRepository(CustomerRequest);
         const appointmentRepo = manager.getRepository(CustomerAppointment);
@@ -420,24 +426,30 @@ export class CustomerRequestService {
             updated.actionType === CustomerRequestAction.EDIT ? 'sửa' : 'xóa';
           const customerName =
             updated.customer?.name ?? `ID #${updated.customerId}`;
-          await this.notificationService.createNotification(
-            {
-              title: `[Phê duyệt] Yêu cầu ${updated.code} ${actionText} khách hàng`,
-              content: `Yêu cầu ${actionText} thông tin khách hàng "${customerName}" đã được phê duyệt thành công. Dữ liệu khách hàng đã được cập nhật trên hệ thống.`,
-              type: NotificationType.CUSTOMER_REQUEST,
-              action: {
-                type: NotificationActionType.CUSTOMER_REQUEST_DETAIL,
-                refId: updated.id,
-                extra: {
-                  customerId: updated.customerId,
-                  actionType: updated.actionType,
-                  code: updated.code,
-                },
-              },
-              recipientIds: [updated.createdById],
-              senderId: managerId,
-            },
-            manager,
+          // await this.notificationService.createNotification(
+          //   {
+          //     title: `[Phê duyệt] Yêu cầu ${updated.code} ${actionText} khách hàng`,
+          //     content: `Yêu cầu ${actionText} thông tin khách hàng "${customerName}" đã được phê duyệt thành công. Dữ liệu khách hàng đã được cập nhật trên hệ thống.`,
+          //     type: NotificationType.CUSTOMER_REQUEST,
+          //     action: {
+          //       type: NotificationActionType.CUSTOMER_REQUEST_DETAIL,
+          //       refId: updated.id,
+          //       extra: {
+          //         customerId: updated.customerId,
+          //         actionType: updated.actionType,
+          //         code: updated.code,
+          //       },
+          //     },
+          //     recipientIds: [updated.createdById],
+          //     senderId: managerId,
+          //   },
+          //   manager,
+          // );
+          event = new CustomerRequestApproveEvent(
+            updated,
+            actionText,
+            customerName,
+            managerId,
           );
         }
 
@@ -458,6 +470,12 @@ export class CustomerRequestService {
       }
       throw error;
     }
+
+    if (event) {
+      this.eventEmitter?.emit(EVENT_CUSTOMER_REQUEST.APPROVE, event);
+    }
+
+    return updatedRequest!;
   }
 
   async reject(
@@ -481,105 +499,102 @@ export class CustomerRequestService {
       throw new ConflictException('Lý do từ chối không được để trống');
     }
 
-    return this.dataSource.transaction(async (manager) => {
-      const requestRepo = manager.getRepository(CustomerRequest);
+    let event: CustomerRequestRejectEvent | undefined;
 
-      const lockedRequest = await requestRepo.findOne({
-        where: { id },
-        lock: { mode: 'pessimistic_write' },
-      });
+    const updatedRequest = await this.dataSource.transaction(
+      async (manager) => {
+        const requestRepo = manager.getRepository(CustomerRequest);
 
-      const requestToProcess = lockedRequest || existing;
+        const lockedRequest = await requestRepo.findOne({
+          where: { id },
+          lock: { mode: 'pessimistic_write' },
+        });
 
-      if (requestToProcess.status !== CustomerRequestStatus.PENDING) {
-        throw new ConflictException(
-          'Chỉ có thể từ chối yêu cầu ở trạng thái Pending',
-        );
-      }
+        const requestToProcess = lockedRequest || existing;
 
-      const rejectedAt = new Date();
+        if (requestToProcess.status !== CustomerRequestStatus.PENDING) {
+          throw new ConflictException(
+            'Chỉ có thể từ chối yêu cầu ở trạng thái Pending',
+          );
+        }
 
-      await requestRepo.update(id, {
-        status: CustomerRequestStatus.REJECTED,
-        approvedById: managerId,
-        approvedAt: rejectedAt,
-        rejectReason: dto.reason.trim(),
-        updatedById: managerId,
-      });
+        const rejectedAt = new Date();
 
-      await this.auditLogService.log(
-        {
-          actionById: managerId,
-          refModel: AuditLogModel.CUSTOMER_REQUEST,
-          targetId: id,
-          diffs: [
-            {
-              field: 'status',
-              oldValue: CustomerRequestStatus.PENDING,
-              newValue: CustomerRequestStatus.REJECTED,
-            },
-            {
-              field: 'rejectReason',
-              oldValue: null,
-              newValue: dto.reason.trim(),
-            },
-          ],
-          metadata: {
-            action: 'REJECT',
-            rejectReason: dto.reason.trim(),
-            customerId: requestToProcess.customerId,
-            actionType: requestToProcess.actionType,
-            requestCode: requestToProcess.code,
-          },
-        },
-        manager,
-      );
+        await requestRepo.update(id, {
+          status: CustomerRequestStatus.REJECTED,
+          approvedById: managerId,
+          approvedAt: rejectedAt,
+          rejectReason: dto.reason.trim(),
+          updatedById: managerId,
+        });
 
-      this.logger.info({
-        message: 'Customer request rejected successfully',
-        requestId: id,
-        code: requestToProcess.code,
-        customerId: requestToProcess.customerId,
-        rejectReason: dto.reason.trim(),
-        rejectedById: managerId,
-      });
-
-      const updated = await requestRepo.findOne({
-        where: { id },
-        relations: { customer: true, approvedBy: true, createdBy: true },
-        withDeleted: true,
-      });
-
-      if (updated && updated.createdById) {
-        const actionText =
-          updated.actionType === CustomerRequestAction.EDIT ? 'sửa' : 'xóa';
-        const customerName =
-          updated.customer?.name ?? `ID #${updated.customerId}`;
-        await this.notificationService.createNotification(
+        await this.auditLogService.log(
           {
-            title: `[Từ chối] Yêu cầu ${updated.code} ${actionText} khách hàng`,
-            content: `Yêu cầu ${actionText} thông tin khách hàng "${customerName}" đã bị từ chối. Lý do: ${dto.reason.trim()}.`,
-            type: NotificationType.CUSTOMER_REQUEST,
-            action: {
-              type: NotificationActionType.CUSTOMER_REQUEST_DETAIL,
-              refId: updated.id,
-              extra: {
-                customerId: updated.customerId,
-                actionType: updated.actionType,
-                code: updated.code,
-                rejectReason: dto.reason.trim(),
+            actionById: managerId,
+            refModel: AuditLogModel.CUSTOMER_REQUEST,
+            targetId: id,
+            diffs: [
+              {
+                field: 'status',
+                oldValue: CustomerRequestStatus.PENDING,
+                newValue: CustomerRequestStatus.REJECTED,
               },
+              {
+                field: 'rejectReason',
+                oldValue: null,
+                newValue: dto.reason.trim(),
+              },
+            ],
+            metadata: {
+              action: 'REJECT',
+              rejectReason: dto.reason.trim(),
+              customerId: requestToProcess.customerId,
+              actionType: requestToProcess.actionType,
+              requestCode: requestToProcess.code,
             },
-            recipientIds: [updated.createdById],
-            senderId: managerId,
           },
           manager,
         );
-      }
 
-      this.removeExtraFields(updated!);
+        this.logger.info({
+          message: 'Customer request rejected successfully',
+          requestId: id,
+          code: requestToProcess.code,
+          customerId: requestToProcess.customerId,
+          rejectReason: dto.reason.trim(),
+          rejectedById: managerId,
+        });
 
-      return updated!;
-    });
+        const updated = await requestRepo.findOne({
+          where: { id },
+          relations: { customer: true, approvedBy: true, createdBy: true },
+          withDeleted: true,
+        });
+
+        if (updated && updated.createdById) {
+          const actionText =
+            updated.actionType === CustomerRequestAction.EDIT ? 'sửa' : 'xóa';
+          const customerName =
+            updated.customer?.name ?? `ID #${updated.customerId}`;
+
+          event = new CustomerRequestRejectEvent(
+            updated,
+            actionText,
+            customerName,
+            managerId,
+          );
+        }
+
+        this.removeExtraFields(updated!);
+
+        return updated!;
+      },
+    );
+
+    if (event) {
+      this.eventEmitter?.emit(EVENT_CUSTOMER_REQUEST.REJECT, event);
+    }
+
+    return updatedRequest;
   }
 }
