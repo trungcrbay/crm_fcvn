@@ -35,7 +35,7 @@ Mọi chỉ dẫn dưới đây phải được tuân thủ nghiêm ngặt để
   - Schema & DTO Validation: Zod v4 tích hợp qua `nestjs-zod`.
   - Bộ nhớ đệm (Cache): Redis 7 tích hợp qua `@nestjs/cache-manager`, `Keyv` và `@keyv/redis`.
   - Xác thực & Bảo mật: `@nestjs/jwt`, `bcrypt`, `@nestjs/throttler`, `helmet`.
-  - Lưu trữ đám mây: AWS S3 qua `@aws-sdk/lib-storage` và `@aws-sdk/s3-request-presigner`.
+  - Lưu trữ tệp: Synology NAS DS425+ thông qua FileStation Web API kết hợp bộ nhớ đệm cục bộ.
   - Tài liệu API: `@nestjs/swagger` kết hợp `cleanupOpenApiDoc`.
 - **Cấu hình Môi trường & Mạng**:
   - Container NestJS lắng nghe trên cổng `3000`.

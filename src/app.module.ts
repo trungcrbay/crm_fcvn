@@ -33,6 +33,8 @@ import { CustomThrottlerGuard } from './shared/guard/throttler.guard';
 import { MediaModule } from './modules/media/media.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CustomerRequestListener } from './listeners/customer-request.listener';
+import { OrderServiceModule } from './modules/order-service/order-service.module';
+import { GuestsModule } from './modules/guests/guests.module';
 
 @Module({
   imports: [
@@ -67,6 +69,8 @@ import { CustomerRequestListener } from './listeners/customer-request.listener';
     PurchaseRequestModule,
     MediaModule,
     EventEmitterModule.forRoot(),
+    OrderServiceModule,
+    GuestsModule,
   ],
   controllers: [AppController],
   providers: [

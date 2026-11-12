@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import {
+  DeleteMediaBodySchema,
   PresignedUploadFileBodySchema,
   PresignedUploadFileResSchema,
   UploadFilesResSchema,
@@ -14,3 +15,5 @@ export class UploadFilesResDTO extends createZodDto(UploadFilesResSchema) {}
 export class PresignedUploadFileResDTO extends createZodDto(
   PresignedUploadFileResSchema,
 ) {}
+
+export class DeleteMediaBodyDTO extends createZodDto(DeleteMediaBodySchema) {}
