@@ -35,6 +35,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CustomerRequestListener } from './listeners/customer-request.listener';
 import { OrderServiceModule } from './modules/order-service/order-service.module';
 import { GuestsModule } from './modules/guests/guests.module';
+import { CartsModule } from './modules/cart/cart.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { GuestsModule } from './modules/guests/guests.module';
     EventEmitterModule.forRoot(),
     OrderServiceModule,
     GuestsModule,
+    CartsModule,
   ],
   controllers: [AppController],
   providers: [
