@@ -45,7 +45,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      redis-node-1:
+        condition: service_healthy
+      redis-node-2:
+        condition: service_healthy
+      redis-node-3:
         condition: service_healthy
       kafka:
         condition: service_healthy
@@ -77,16 +81,53 @@ services:
     networks:
       - crm_network
 
-  redis:
+  redis-node-1:
     image: redis:7-alpine
-    container_name: crm_redis
+    container_name: crm_redis_node_1
     restart: unless-stopped
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
     ports:
-      - '6379:6379'
+      - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis-data-1:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD', 'redis-cli', '-p', '6379', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
+    networks:
+      - crm_network
+
+  redis-node-2:
+    image: redis:7-alpine
+    container_name: crm_redis_node_2
+    restart: unless-stopped
+    command: redis-server --port 6380 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6380:6380"
+    volumes:
+      - redis-data-2:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-p', '6380', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
+    networks:
+      - crm_network
+
+  redis-node-3:
+    image: redis:7-alpine
+    container_name: crm_redis_node_3
+    restart: unless-stopped
+    command: redis-server --port 6381 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6381:6381"
+    volumes:
+      - redis-data-3:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-p', '6381', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -155,8 +196,12 @@ services:
 volumes:
   postgres_data:
     name: crm_postgres_data
-  redis_data:
-    name: crm_redis_data
+  redis-data-1:
+    name: crm_redis_data_1
+  redis-data-2:
+    name: crm_redis_data_2
+  redis-data-3:
+    name: crm_redis_data_3
   zookeeper_data:
     name: crm_zookeeper_data
   zookeeper_log:

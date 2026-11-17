@@ -19,6 +19,8 @@ import { UsersRepository } from '../users/users.repository';
 import { UserStatus } from 'src/shared/constant/user.constant';
 import { PinoLogger } from 'nestjs-pino';
 import { Permission } from 'src/shared/constant/permission.constant';
+import { CACHE_TTL_ROLES_LIST } from 'src/shared/constant/cache.constant';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class CustomersService {
@@ -26,6 +28,7 @@ export class CustomersService {
     private readonly customersRepository: CustomersRepository,
     private readonly usersRepository: UsersRepository,
     private readonly logger: PinoLogger,
+    private readonly cacheService: CacheService,
   ) {
     this.logger.setContext(CustomersService.name);
   }
@@ -207,9 +210,30 @@ export class CustomersService {
       where,
     };
 
-    const result = await this.customersRepository.findAll(options);
+    // 1. TẠO CACHE KEY ĐẦY ĐỦ (Gồm user, phân quyền và mọi filter)
+    // Dùng JSON.stringify để gộp toàn bộ query/filter lại thành 1 chuỗi an toàn
+    const filterHash = JSON.stringify({ query, saleOwnerId });
+    const cacheKey = `customers-list:${currentUser.userId}:${Buffer.from(filterHash).toString('base64')}`;
+    // Mẹo: base64 giúp key không bị quá dài và tránh các ký tự đặc biệt phá key Redis
 
-    return result;
+    // 2. LẤY DỮ LIỆU TỪ CACHE HOẶC DB
+    // await this.cacheService.tagKey(cacheKey, ['customers-list']);
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        // Hàm fetchData này chỉ chạy khi Cache Miss (không có trong Redis)
+        const result = this.customersRepository.findAll(options);
+
+        // 3. CHỈ GẮN TAG SAU KHI LẤY TỪ DB VÀ SẮP LƯU VÀO CACHE
+        // Gắn tag để sau này có ai thêm/sửa/xóa khách hàng thì xóa hàng loạt cache này
+        await this.cacheService.tagKey(cacheKey, ['customers-list']);
+
+        return result;
+      },
+      CACHE_TTL_ROLES_LIST,
+    );
+
+    // return result;
   }
 
   async findOne(

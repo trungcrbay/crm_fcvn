@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ZodSerializerDto } from 'nestjs-zod';
 import type { PaginatedResult } from '../../shared/repositories/base.repository';
@@ -53,6 +54,7 @@ import {
   GroupType,
 } from '../../shared/constant/customer.constant';
 import CustomZodValidationPipe from 'src/shared/pipe/custom-zod-validation.pipe';
+import { HttpCacheInterceptor } from 'src/interceptor/cache.interceptor';
 
 @SkipThrottle()
 @Controller('customers')
@@ -92,6 +94,7 @@ export class CustomersController {
   @Get()
   @Permissions([Permission.CUSTOMER_MANAGE, Permission.CUSTOMER_READ])
   @ZodSerializerDto(GetCustomersResDTO)
+  @UseInterceptors(HttpCacheInterceptor)
   @ApiOperation({
     summary:
       'Lấy danh sách khách hàng (hỗ trợ phân quyền Sales Owner, tìm kiếm & lọc)',

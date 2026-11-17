@@ -72,31 +72,25 @@ export class AuthGuard implements CanActivate {
     const cacheKey = getRolePermissionsCacheKey(roleId);
 
     try {
-      const cachedPermissions =
-        await this.cacheService.get<Permission[]>(cacheKey);
-
-      if (cachedPermissions !== undefined) {
-        return cachedPermissions;
-      }
-    } catch {
-      // Cache is an optimization; auth should fall back to DB if Redis is down.
-    }
-
-    try {
-      const role = await this.rolesRepository.findOne(roleId);
-      const permissions = role?.permissions ?? [];
-
-      await this.cacheService
-        .set(cacheKey, permissions, CACHE_TTL_ROLE_PERMISSIONS)
-        .catch(() => {});
-
-      return permissions;
+      return await this.cacheService.getOrSet(
+        cacheKey,
+        async () => {
+          const role = await this.rolesRepository.findOne(roleId);
+          return role?.permissions ?? [];
+        },
+        CACHE_TTL_ROLE_PERMISSIONS,
+      );
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
 
-      throw new UnauthorizedException('Không thể xác thực quyền truy cập');
+      try {
+        const role = await this.rolesRepository.findOne(roleId);
+        return role?.permissions ?? [];
+      } catch {
+        throw new UnauthorizedException('Không thể xác thực quyền truy cập');
+      }
     }
   }
 

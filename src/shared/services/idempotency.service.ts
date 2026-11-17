@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { CacheService } from 'src/modules/cache/cache.service';
+import { Inject, Injectable } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class IdempotencyService {
@@ -11,7 +12,7 @@ export class IdempotencyService {
 
   private readonly waitInterval = 200;
 
-  constructor(private readonly cacheService: CacheService) {}
+  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
 
   private responseKey(key: string): string {
     return `idempotency:response:${key}`;
@@ -22,19 +23,32 @@ export class IdempotencyService {
   }
 
   async getResponse<T>(key: string): Promise<T | undefined> {
-    return this.cacheService.get<T>(this.responseKey(key));
+    const result = await this.cacheManager.get<T>(this.responseKey(key));
+    return result ?? undefined;
   }
 
   async saveResponse<T>(key: string, value: T): Promise<void> {
-    await this.cacheService.set(this.responseKey(key), value, this.responseTtl);
+    await this.cacheManager.set(this.responseKey(key), value, this.responseTtl);
   }
 
   async acquireLock(key: string): Promise<boolean> {
-    return this.cacheService.setIfNotExists(
-      this.lockKey(key),
-      '1',
-      this.lockTtl,
-    );
+    const client = (this.cacheManager as any).store?.client;
+    if (client && typeof client.set === 'function') {
+      const result = await client.set(
+        this.lockKey(key),
+        '1',
+        'PX',
+        this.lockTtl,
+        'NX',
+      );
+      return result === 'OK';
+    }
+    const existing = await this.cacheManager.get(this.lockKey(key));
+    if (existing !== undefined && existing !== null) {
+      return false;
+    }
+    await this.cacheManager.set(this.lockKey(key), '1', this.lockTtl);
+    return true;
   }
 
   async waitForResponse<T>(key: string): Promise<T | undefined> {
@@ -54,7 +68,7 @@ export class IdempotencyService {
   }
 
   async clearLock(key: string): Promise<void> {
-    await this.cacheService.delete(this.lockKey(key));
+    await this.cacheManager.del(this.lockKey(key));
   }
 
   private sleep(ms: number): Promise<void> {

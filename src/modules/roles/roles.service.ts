@@ -33,7 +33,7 @@ export class RolesService {
         description: data.description,
         createdById: userId,
       });
-      await this.cacheService.delete(CACHE_KEY_ROLES_LIST);
+      await this.cacheService.invalidatePattern(CACHE_KEY_ROLES_LIST);
       return role;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -73,19 +73,11 @@ export class RolesService {
 
     const cacheKey = CACHE_KEY_ROLES_LIST;
 
-    const cached = await this.cacheService.get<Role[] | PaginatedResult<Role>>(
+    return this.cacheService.getOrSet(
       cacheKey,
+      () => this.rolesRepository.findAll(options),
+      CACHE_TTL_ROLES_LIST,
     );
-
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    const roles = await this.rolesRepository.findAll(options);
-
-    await this.cacheService.set(cacheKey, roles, CACHE_TTL_ROLES_LIST);
-
-    return roles;
   }
 
   async findOne(id: number): Promise<Role> {
@@ -113,8 +105,8 @@ export class RolesService {
         throw new NotFoundException('Không tìm thấy vai trò');
       }
 
-      await this.cacheService.delete(CACHE_KEY_ROLES_LIST);
-      await this.cacheService.delete(getRolePermissionsCacheKey(id));
+      await this.cacheService.invalidatePattern(CACHE_KEY_ROLES_LIST);
+      await this.cacheService.invalidatePattern(getRolePermissionsCacheKey(id));
 
       return role;
     } catch (error) {
@@ -129,8 +121,8 @@ export class RolesService {
   async remove(id: number, userId: number) {
     await this.findOne(id);
     await this.rolesRepository.remove(id, userId);
-    await this.cacheService.delete(CACHE_KEY_ROLES_LIST);
-    await this.cacheService.delete(getRolePermissionsCacheKey(id));
+    await this.cacheService.invalidatePattern(CACHE_KEY_ROLES_LIST);
+    await this.cacheService.invalidatePattern(getRolePermissionsCacheKey(id));
     return {
       message: 'Xóa vai trò thành công',
     };

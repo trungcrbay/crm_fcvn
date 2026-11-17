@@ -33,10 +33,11 @@ import { CustomThrottlerGuard } from './shared/guard/throttler.guard';
 import { MediaModule } from './modules/media/media.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CustomerRequestListener } from './listeners/customer-request.listener';
-import { OrderServiceModule } from './modules/order-service/order-service.module';
+// import { OrderServiceModule } from './modules/order-service/order-service.module';
 import { GuestsModule } from './modules/guests/guests.module';
 import { CartsModule } from './modules/cart/cart.module';
-
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisClusterConfig } from './config/redis.config';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -50,7 +51,11 @@ import { CartsModule } from './modules/cart/cart.module';
         },
       ],
     }),
-
+    //Đăng ký module - dùng registerAsync vì trong thực tế bạn sẽ đọc config từ ConfigService/env chứ không hardcode:
+    CacheModule.registerAsync({
+      useFactory: () => redisClusterConfig,
+      isGlobal: true, // Make the cache available app-wide without re-importing
+    }),
     DatabaseModule,
     UsersModule,
     RolesModule,
@@ -70,7 +75,7 @@ import { CartsModule } from './modules/cart/cart.module';
     PurchaseRequestModule,
     MediaModule,
     EventEmitterModule.forRoot(),
-    OrderServiceModule,
+    // OrderServiceModule,
     GuestsModule,
     CartsModule,
   ],
