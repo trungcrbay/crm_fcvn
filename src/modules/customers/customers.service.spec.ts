@@ -24,6 +24,12 @@ type MockUsersRepository = jest.Mocked<Pick<UsersRepository, 'findOne'>>;
 type MockLogger = jest.Mocked<
   Pick<PinoLogger, 'setContext' | 'info' | 'error' | 'warn'>
 >;
+type MockCacheService = {
+  getOrSet: jest.Mock;
+  tagKey: jest.Mock;
+  invalidatePattern: jest.Mock;
+  invalidateByTag: jest.Mock;
+};
 
 const buildRepository = (): MockRepository => ({
   create: jest.fn(),
@@ -45,15 +51,24 @@ const buildLogger = (): MockLogger => ({
   warn: jest.fn(),
 });
 
+const buildCacheService = (): MockCacheService => ({
+  getOrSet: jest.fn().mockImplementation((_key, fn) => fn()),
+  tagKey: jest.fn().mockResolvedValue(undefined),
+  invalidatePattern: jest.fn().mockResolvedValue(undefined),
+  invalidateByTag: jest.fn().mockResolvedValue(undefined),
+});
+
 const buildService = (
   repo: MockRepository,
   usersRepo: MockUsersRepository,
   logger: MockLogger = buildLogger(),
+  cacheService: MockCacheService = buildCacheService(),
 ): CustomersService =>
   new CustomersService(
     repo as unknown as CustomersRepository,
     usersRepo as unknown as UsersRepository,
     logger as unknown as PinoLogger,
+    cacheService as any,
   );
 
 /** Tạo mock Customer - chỉ cần truyền các field liên quan đến test case */

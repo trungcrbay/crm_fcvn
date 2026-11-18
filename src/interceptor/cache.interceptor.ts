@@ -38,11 +38,11 @@ export class HttpCacheInterceptor implements NestInterceptor {
     }
 
     return next.handle().pipe(
-      tap(async (response) => {
+      tap((response) => {
         // Read per-handler TTL from metadata, fall back to 300s
         const ttl =
           this.reflector.get<number>('cache-ttl', context.getHandler()) || 300;
-        await this.cacheManager.set(cacheKey, response, ttl);
+        void this.cacheManager.set(cacheKey, response, ttl);
       }),
     );
   }
